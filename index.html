@@ -1093,6 +1093,24 @@
             input.click();
         },
 
+        parseExcelSheet(sheet) {
+            // Siempre lee la primera fila como cabecera, sin importar el formato
+            const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+            if (!raw.length) return [];
+            const headers = raw[0].map(h => String(h ?? '').trim());
+            // Si todas las cabeceras están vacías, no hay datos útiles
+            if (!headers.some(Boolean)) return [];
+            return raw.slice(1)
+                .filter(row => row.some(cell => cell !== '' && cell !== null && cell !== undefined))
+                .map(row => {
+                    const obj = {};
+                    headers.forEach((h, i) => {
+                        if (h) obj[h] = row[i] !== undefined && row[i] !== null ? String(row[i]).trim() : '';
+                    });
+                    return obj;
+                });
+        },
+
         handleFileUpload(e) {
             const file = e.target.files[0];
             if (!file) return;
@@ -1107,14 +1125,18 @@
                         const wb = XLSX.read(event.target.result);
                         const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes('datos')) || wb.SheetNames[0];
                         const sheet = wb.Sheets[sheetName];
-                        data = XLSX.utils.sheet_to_json(sheet);
+                        data = this.parseExcelSheet(sheet);
                     } else {
                         this.showToast('Formato no soportado', 'error');
                         return;
                     }
+                    if (!data.length) {
+                        this.showToast('El archivo está vacío o no tiene cabeceras en la primera fila', 'warning');
+                        return;
+                    }
                     this.loadDatosData(data);
                     this.showColumnMapping(data);
-                    const autoMappings = this.buildAutoMappings(Object.keys(data[0] || {}));
+                    const autoMappings = this.buildMappingsFromColumns(Object.keys(data[0] || {}));
                     if (Object.values(autoMappings).some(Boolean)) {
                         this.importRowsWithMappings(data, autoMappings);
                     } else {
@@ -1699,74 +1721,46 @@
 
         importRowsWithMappings(data, mappings, options = {}) {
             const currentColumns = DataModel.excelColumns.length ? [...DataModel.excelColumns] : [...this._importHeaders];
-            
-            // Procesa solo filas que tengan al menos un valor en las columnas mapeadas
+
+            // Recoge todos los nombres únicos presentes en los datos actuales
+            const areaNames = new Set();
+            const subareaNames = new Set();
+            const respNames = new Set();
+            const personNames = new Set();
+
             data.forEach(row => {
-                const areaName = mappings['Área'] && row[mappings['Área']] ? row[mappings['Área']].toString().trim() : null;
-                const subareaName = mappings['Subárea'] && row[mappings['Subárea']] ? row[mappings['Subárea']].toString().trim() : null;
-                const respName = mappings['Responsable'] && row[mappings['Responsable']] ? row[mappings['Responsable']].toString().trim() : null;
-                const personName = mappings['Persona'] && row[mappings['Persona']] ? row[mappings['Persona']].toString().trim() : null;
-                const color = mappings['Color'] && row[mappings['Color']] ? row[mappings['Color']].toString().trim() : null;
+                const get = (field) => mappings[field] && row[mappings[field]] ? row[mappings[field]].toString().trim() : null;
+                const a = get('Área'), s = get('Subárea'), r = get('Responsable'), p = get('Persona');
+                if (a) areaNames.add(a);
+                if (s) subareaNames.add(s);
+                if (r) respNames.add(r);
+                if (p) personNames.add(p);
 
-                // ÁREA - solo si no existe
-                if (areaName) {
-                    const exists = DataModel.areas.some(a => a.name === areaName);
-                    if (!exists) {
-                        DataModel.addArea({
-                            name: areaName,
-                            color: color || null,
-                            x: null,
-                            y: null,
-                            placed: false,
-                            superior: null
-                        });
-                    }
+                // Añadir si no existe, marcando fromExcel:true para poder eliminarlo después
+                const color = get('Color');
+                if (a && !DataModel.areas.some(el => el.name === a)) {
+                    DataModel.addArea({ name: a, color: color || null, x: null, y: null, placed: false, superior: null, fromExcel: true });
                 }
-
-                // SUBÁREA - solo si no existe
-                if (subareaName) {
-                    const exists = DataModel.subareas.some(s => s.name === subareaName);
-                    if (!exists) {
-                        DataModel.addSubarea({
-                            name: subareaName,
-                            parent: null,
-                            color: null,
-                            x: null,
-                            y: null,
-                            placed: false
-                        });
-                    }
+                if (s && !DataModel.subareas.some(el => el.name === s)) {
+                    DataModel.addSubarea({ name: s, parent: null, color: null, x: null, y: null, placed: false, fromExcel: true });
                 }
-
-                // RESPONSABLE - solo si no existe
-                if (respName) {
-                    const exists = DataModel.responsibles.some(r => r.name === respName);
-                    if (!exists) {
-                        DataModel.addResponsible({
-                            name: respName,
-                            area: null,
-                            subarea: null,
-                            x: null,
-                            y: null,
-                            placed: false
-                        });
-                    }
+                if (r && !DataModel.responsibles.some(el => el.name === r)) {
+                    DataModel.addResponsible({ name: r, area: null, subarea: null, x: null, y: null, placed: false, fromExcel: true });
                 }
-
-                // PERSONA - solo si no existe
-                if (personName) {
-                    const exists = DataModel.personas.some(p => p.name === personName);
-                    if (!exists) {
-                        DataModel.addPersona({
-                            name: personName,
-                            area: null,
-                            responsible: null,
-                            x: 0,
-                            y: 0
-                        });
-                    }
+                if (p && !DataModel.personas.some(el => el.name === p)) {
+                    DataModel.addPersona({ name: p, area: null, responsible: null, x: 0, y: 0, fromExcel: true });
                 }
             });
+
+            // Eliminar elementos que venían del Excel pero ya no están en los datos
+            if (mappings['Área'])       DataModel.areas      = DataModel.areas.filter(el => !el.fromExcel || areaNames.has(el.name));
+            if (mappings['Subárea'])    DataModel.subareas   = DataModel.subareas.filter(el => !el.fromExcel || subareaNames.has(el.name));
+            if (mappings['Responsable'])DataModel.responsibles = DataModel.responsibles.filter(el => !el.fromExcel || respNames.has(el.name));
+            if (mappings['Persona'])    DataModel.personas   = DataModel.personas.filter(el => !el.fromExcel || personNames.has(el.name));
+
+            // Limpiar conexiones huérfanas
+            const allIds = new Set([...DataModel.areas, ...DataModel.subareas, ...DataModel.responsibles, ...DataModel.personas, ...DataModel.superiors].map(e => e.id));
+            DataModel.manualConnections = DataModel.manualConnections.filter(c => allIds.has(c.from) && allIds.has(c.to));
 
             DataModel.setExcelData(currentColumns, data);
             this.save();
