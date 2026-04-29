@@ -537,8 +537,7 @@
                         <button class="btn-icon" onclick="app.canvas.zoomIn()" title="Zoom +">🔍➕</button>
                         <button class="btn-icon" onclick="app.canvas.zoomOut()" title="Zoom -">🔍➖</button>
                         <button class="btn-icon" onclick="app.canvas.centerCanvas()" title="Centrar">🎯</button>
-                        <button class="btn-icon" onclick="app.canvas.fitToView()" title="Ajustar vista">📐</button>
-                        <button class="btn-icon" onclick="app.canvas.autoLayout()" title="Auto-organizar">🗂️</button>
+                        <button class="btn btn-secondary btn-sm" onclick="app.canvas.autoLayout()" title="Organizar y ajustar vista">⚡ Organizar</button>
                         <button class="btn-icon" onclick="app.canvas.startConnectionMode()" title="Unir cajas">➕</button>
                         <select id="connection-style" class="search-input" style="width:auto;margin:0;padding:0.45rem;" onchange="app.canvas.setConnectionStyle(this.value)">
                             <option value="solid">Línea firme</option>
@@ -2864,69 +2863,107 @@
             },
 
             autoLayout(showMessage = true) {
-                // Organizes elements in a hierarchical grid
-                const AREA_W = 220, AREA_GAP = 60;
-                const SUB_W = 190, SUB_GAP = 40;
-                const RESP_W = 200, RESP_GAP = 30;
-                const PERSON_W = 165, PERSON_GAP = 20;
+                const PAD       = 50;   // margen lateral inicial
+                const AREA_W    = 220, AREA_H    = 60;
+                const SUB_W     = 190, SUB_H     = 55;
+                const RESP_W    = 200, RESP_H    = 85;
+                const SUP_W     = 240, SUP_H     = 64;
+                const PERSON_W  = 165, PERSON_H  = 55;
 
-                let superiorX = 60;
-                DataModel.superiors.filter(s => (s.position || 'above') === 'above').forEach(superior => {
-                    superior.x = superiorX;
-                    superior.y = 40;
-                    superiorX += 300;
-                });
+                const H_GAP_AREA = 60;   // espacio horizontal entre bloques de área
+                const H_GAP_SUB  = 30;   // espacio entre subáreas
+                const H_GAP_RESP = 30;   // espacio entre responsables
+                const V_SUP      = 40;   // Y secciones superiores
+                const V_AREA     = 160;  // Y áreas
+                const V_SUB      = 280;  // Y subáreas
+                const V_RESP     = 420;  // Y responsables
+                const V_SUP_LOW  = 560;  // Y secciones inferiores
+                const V_PERSON   = 680;  // Y personas
 
-                let areaX = 60;
-                DataModel.areas.forEach(area => {
-                    area.x = areaX;
-                    area.y = 150;
-
-                    const subs = DataModel.subareas.filter(s => s.parent === area.id);
-                    let subX = areaX;
-                    subs.forEach((sub, si) => {
-                        sub.x = subX;
-                        sub.y = 270;
-                        subX += SUB_W + SUB_GAP;
+                // ── Secciones "encima" ──────────────────────────────
+                let x = PAD;
+                DataModel.superiors
+                    .filter(s => (s.position || 'above') === 'above')
+                    .forEach(s => {
+                        s.x = x; s.y = V_SUP; s.placed = true;
+                        x += SUP_W + H_GAP_AREA;
                     });
 
-                    const resps = DataModel.responsibles.filter(r => r.area === area.id);
-                    let respX = areaX;
-                    resps.forEach(resp => {
-                        resp.x = respX;
-                        resp.y = 390;
-                        respX += RESP_W + RESP_GAP;
+                // ── Áreas centradas sobre sus subáreas ──────────────
+                // Primero calcula el ancho que ocupa cada bloque área+subáreas+responsables
+                const areaBlock = DataModel.areas.map(area => {
+                    const subs  = DataModel.subareas.filter(s => s.parent === area.id);
+                    const resps = DataModel.responsibles.filter(r => r.area === area.id && !r.subarea);
+                    const subsWidth  = subs.length  ? subs.length  * SUB_W  + (subs.length  - 1) * H_GAP_SUB  : 0;
+                    const respsWidth = resps.length ? resps.length * RESP_W + (resps.length - 1) * H_GAP_RESP : 0;
+                    const blockW = Math.max(AREA_W, subsWidth, respsWidth);
+                    return { area, subs, resps, blockW };
+                });
+
+                x = PAD;
+                areaBlock.forEach(({ area, subs, resps, blockW }) => {
+                    // Área centrada en el bloque
+                    area.x = x + (blockW - AREA_W) / 2;
+                    area.y = V_AREA;
+                    area.placed = true;
+
+                    // Subáreas centradas en el bloque, todas a la misma Y
+                    const subsTotal = subs.length * SUB_W + (subs.length - 1) * H_GAP_SUB;
+                    let sx = x + (blockW - subsTotal) / 2;
+                    subs.forEach(sub => {
+                        sub.x = sx; sub.y = V_SUB; sub.placed = true;
+                        sx += SUB_W + H_GAP_SUB;
+
+                        // Responsables de la subárea bajo la subárea
+                        const subResps = DataModel.responsibles.filter(r => r.subarea === sub.id);
+                        subResps.forEach((r, i) => {
+                            r.x = sub.x + i * (RESP_W + H_GAP_RESP);
+                            r.y = V_RESP;
+                            r.placed = true;
+                        });
                     });
 
-                    const span = Math.max(
-                        AREA_W,
-                        subs.length * (SUB_W + SUB_GAP),
-                        resps.length * (RESP_W + RESP_GAP)
-                    );
-                    areaX += span + AREA_GAP;
+                    // Responsables de área (sin subárea) centrados en el bloque
+                    const respsTotal = resps.length * RESP_W + (resps.length - 1) * H_GAP_RESP;
+                    let rx = x + (blockW - respsTotal) / 2;
+                    resps.forEach(r => {
+                        r.x = rx; r.y = V_RESP; r.placed = true;
+                        rx += RESP_W + H_GAP_RESP;
+                    });
+
+                    x += blockW + H_GAP_AREA;
                 });
 
-                // Place persons without set positions
-                let lowerX = 60;
-                DataModel.superiors.filter(s => s.position === 'below').forEach(section => {
-                    section.x = lowerX;
-                    section.y = 500;
-                    lowerX += 300;
-                });
+                // Responsables sin área ni subárea asignada
+                let rx = x;
+                DataModel.responsibles
+                    .filter(r => !r.area && !r.subarea)
+                    .forEach(r => {
+                        r.x = rx; r.y = V_RESP; r.placed = true;
+                        rx += RESP_W + H_GAP_RESP;
+                    });
 
-                let personX = 60, personY = 620;
+                // ── Secciones "debajo" ──────────────────────────────
+                x = PAD;
+                DataModel.superiors
+                    .filter(s => s.position === 'below')
+                    .forEach(s => {
+                        s.x = x; s.y = V_SUP_LOW; s.placed = true;
+                        x += SUP_W + H_GAP_AREA;
+                    });
+
+                // ── Personas ────────────────────────────────────────
+                let px = PAD, py = V_PERSON;
                 DataModel.personas.forEach(p => {
-                    if (!p.x || !p.y) {
-                        p.x = personX;
-                        p.y = personY;
-                        personX += PERSON_W + PERSON_GAP;
-                        if (personX > 1200) { personX = 60; personY += 80; }
-                    }
+                    p.x = px; p.y = py; p.placed = true;
+                    px += PERSON_W + 20;
+                    if (px > 1800) { px = PAD; py += PERSON_H + 20; }
                 });
 
                 app.save();
+                this.fitToView();   // ajusta el zoom para ver todo
                 this.render();
-                if (showMessage) app.showToast('Vista reorganizada', 'info');
+                if (showMessage) app.showToast('Organigrama organizado', 'info');
             },
 
             zoomAt(x, y, delta) {
