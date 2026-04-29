@@ -1288,6 +1288,9 @@
         },
 
         buildExportCanvas() {
+            const canvasObj = this.canvas;
+            canvasObj.exporting = true;
+            canvasObj.render();
             const src = document.getElementById('canvas');
             const exp = document.createElement('canvas');
             exp.width  = src.width;
@@ -1296,6 +1299,8 @@
             ctx.fillStyle = '#FFFFFF';
             ctx.fillRect(0, 0, exp.width, exp.height);
             ctx.drawImage(src, 0, 0);
+            canvasObj.exporting = false;
+            canvasObj.render();
             return exp;
         },
 
@@ -2238,6 +2243,8 @@
             connectionMode: false,
             connectionStyle: 'solid',
             connectionStart: null,
+            connectionDrag: null,   // { fromId, fromX, fromY, toX, toY }
+            exporting: false,
             dragElementOffsetX: 0,
             dragElementOffsetY: 0,
             dragStartX: 0,
@@ -2272,6 +2279,17 @@
                 wrapper.addEventListener('mousedown', (e) => {
                     if (this.connectionMode) return;
                     const point = this.toWorld(e);
+
+                    // Comprobar primero si se pulsa en un handle de conexión
+                    const handle = this.hitTestHandle(point.x, point.y);
+                    if (handle) {
+                        const { w, h } = this.getBoxSize(handle.el);
+                        const hx = (handle.el.x || 50) + w / 2;
+                        const hy = handle.pos === 'top' ? (handle.el.y || 50) : (handle.el.y || 50) + h;
+                        this.connectionDrag = { fromId: handle.el.id, fromX: hx, fromY: hy, toX: point.x, toY: point.y };
+                        return;
+                    }
+
                     const hit = this.hitTest(point.x, point.y);
                     if (hit) {
                         this.draggedElement = hit;
@@ -2286,6 +2304,7 @@
                 });
 
                 wrapper.addEventListener('click', (e) => {
+                    if (this.connectionDrag) return;
                     const point = this.toWorld(e);
                     const deleteHit = this.hitTestConnectionDelete(point.x, point.y);
                     if (deleteHit) {
@@ -2300,6 +2319,13 @@
                 });
 
                 wrapper.addEventListener('mousemove', (e) => {
+                    if (this.connectionDrag) {
+                        const point = this.toWorld(e);
+                        this.connectionDrag.toX = point.x;
+                        this.connectionDrag.toY = point.y;
+                        this.render();
+                        return;
+                    }
                     if (this.draggedElement && this.isDragging && e.buttons === 1) {
                         const point = this.toWorld(e);
                         this.draggedElement.x = point.x - this.dragElementOffsetX;
@@ -2316,6 +2342,18 @@
                 });
 
                 wrapper.addEventListener('mouseup', (e) => {
+                    if (this.connectionDrag) {
+                        const point = this.toWorld(e);
+                        const target = this.hitTest(point.x, point.y, this.connectionDrag.fromId);
+                        if (target) {
+                            DataModel.addManualConnection({ from: this.connectionDrag.fromId, to: target.id, style: this.connectionStyle });
+                            app.save();
+                            app.showToast('Línea añadida', 'success');
+                        }
+                        this.connectionDrag = null;
+                        this.render();
+                        return;
+                    }
                     if (this.draggedElement) {
                         this.applyDropRelation(this.draggedElement, e);
                         app.save();
@@ -2325,6 +2363,7 @@
                     this.draggedElement = null;
                 });
                 wrapper.addEventListener('mouseleave', () => {
+                    if (this.connectionDrag) { this.connectionDrag = null; this.render(); }
                     this.isDragging = false;
                     this.isPanning = false;
                     this.draggedElement = null;
@@ -2474,11 +2513,38 @@
                 this.drawGrid();
                 this.drawConnections();
 
-                DataModel.superiors.filter(el => el.placed !== false).forEach(el => this.drawBox(el));
-                DataModel.areas.filter(el => el.placed !== false).forEach(el => this.drawBox(el));
-                DataModel.subareas.filter(el => el.placed !== false).forEach(el => this.drawBox(el));
-                DataModel.responsibles.filter(el => el.placed === true && !el.attachedTo && !el.area && !el.subarea).forEach(el => this.drawBox(el));
-                DataModel.personas.filter(el => el.x && el.y && !el.attachedTo).forEach(el => this.drawBox(el));
+                const placedSuperiors = DataModel.superiors.filter(el => el.placed !== false);
+                const placedAreas = DataModel.areas.filter(el => el.placed !== false);
+                const placedSubareas = DataModel.subareas.filter(el => el.placed !== false);
+                const placedResponsibles = DataModel.responsibles.filter(el => el.placed === true && !el.attachedTo && !el.area && !el.subarea);
+                const placedPersonas = DataModel.personas.filter(el => el.x && el.y && !el.attachedTo);
+
+                placedSuperiors.forEach(el => this.drawBox(el));
+                placedAreas.forEach(el => this.drawBox(el));
+                placedSubareas.forEach(el => this.drawBox(el));
+                placedResponsibles.forEach(el => this.drawBox(el));
+                placedPersonas.forEach(el => this.drawBox(el));
+
+                // Draw edge handles for all placed elements
+                if (!this.exporting) {
+                    [...placedSuperiors, ...placedAreas, ...placedSubareas, ...placedResponsibles, ...placedPersonas]
+                        .forEach(el => this.drawHandles(el));
+                }
+
+                // Draw rubber-band connection preview line
+                if (this.connectionDrag) {
+                    const cd = this.connectionDrag;
+                    ctx.save();
+                    ctx.strokeStyle = '#0057A8';
+                    ctx.lineWidth = 2;
+                    ctx.setLineDash([6, 4]);
+                    ctx.globalAlpha = 0.75;
+                    ctx.beginPath();
+                    ctx.moveTo(cd.fromX, cd.fromY);
+                    ctx.lineTo(cd.toX, cd.toY);
+                    ctx.stroke();
+                    ctx.restore();
+                }
 
                 ctx.restore();
                 this.updateZoomDisplay();
@@ -2600,6 +2666,7 @@
             },
 
             drawConnectionDeleteMarker(from, to) {
+                if (this.exporting) return;
                 const ctx = this.ctx;
                 const point = this.getConnectionDeletePoint(from, to);
                 ctx.save();
@@ -2616,6 +2683,46 @@
                 ctx.textBaseline = 'middle';
                 ctx.fillText('×', point.x, point.y);
                 ctx.restore();
+            },
+
+            hitTestHandle(mx, my) {
+                const all = [...DataModel.superiors, ...DataModel.areas, ...DataModel.subareas, ...DataModel.responsibles, ...DataModel.personas];
+                for (const el of all) {
+                    if (el.placed !== true) continue;
+                    const { w, h } = this.getBoxSize(el);
+                    const cx = (el.x || 50) + w / 2;
+                    const topY = el.y || 50;
+                    const botY = topY + h;
+                    if (Math.hypot(mx - cx, my - topY) <= 10) return { el, pos: 'top' };
+                    if (Math.hypot(mx - cx, my - botY) <= 10) return { el, pos: 'bottom' };
+                }
+                return null;
+            },
+
+            drawHandles(el) {
+                if (this.exporting) return;
+                const ctx = this.ctx;
+                const { w, h } = this.getBoxSize(el);
+                const cx = (el.x || 50) + w / 2;
+                const topY = el.y || 50;
+                const botY = topY + h;
+                const r = 7;
+                [topY, botY].forEach(cy => {
+                    ctx.save();
+                    ctx.beginPath();
+                    ctx.arc(cx, cy, r, 0, Math.PI * 2);
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.strokeStyle = '#0057A8';
+                    ctx.lineWidth = 1.5;
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = '#0057A8';
+                    ctx.font = 'bold 13px -apple-system, Arial, sans-serif';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText('+', cx, cy);
+                    ctx.restore();
+                });
             },
 
             roundRect(x, y, w, h, r) {
