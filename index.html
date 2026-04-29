@@ -3043,30 +3043,8 @@
         },
 
         load() {
-            const saved = localStorage.getItem('organigrama-data-v2') || localStorage.getItem('organigrama-data');
-            if (saved) {
-                try {
-                    const data = JSON.parse(saved);
-                    this.boards = data.boards || {};
-                    this.currentBoard = data.currentBoard || 'santalucia';
-                    this.initBoards();
-                    // Retrocompatibilidad: si los boards están vacíos pero había datos en formato antiguo, migrarlos
-                    const boardData = this.boards[this.currentBoard]?.data;
-                    const boardEmpty = !boardData || (!boardData.areas?.length && !boardData.excelRows?.length);
-                    const oldDataExists = data.areas?.length > 0 || data.excelRows?.length > 0;
-                    if (boardEmpty && oldDataExists) {
-                        DataModel.fromJSON(data);
-                        this.saveCurrentBoardState();
-                    } else {
-                        this.loadBoardState(this.currentBoard);
-                    }
-                } catch(e) {
-                    console.error(e);
-                    this.initBoards();
-                }
-            } else {
-                this.initBoards();
-            }
+            // Siempre empieza vacío: no se carga nada de localStorage
+            this.initBoards();
         },
 
         // ============================================
