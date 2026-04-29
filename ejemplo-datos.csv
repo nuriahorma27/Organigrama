@@ -1,0 +1,28 @@
+Área,Subárea,Responsable,Persona,Rol,Color
+Dirección General,Dirección Ejecutiva,Director General,Carlos González,Director General,#003B73
+Dirección General,Dirección Ejecutiva,Director General,Análisis Estratégico,#003B73
+Recursos Humanos,Selección,Director RR.HH.,Juan García López,Especialista en Selección,#0057A8
+Recursos Humanos,Selección,Director RR.HH.,María López Fernández,Asistente de Selección,#0057A8
+Recursos Humanos,Formación,Director RR.HH.,Pedro Ruiz García,Coordinador de Formación,#0057A8
+Recursos Humanos,Nómina,Director RR.HH.,Laura Martínez Pérez,Gestora de Nómina,#0057A8
+Finanzas,Contabilidad,Director de Finanzas,Roberto Sánchez López,Jefe de Contabilidad,#4A90D9
+Finanzas,Contabilidad,Director de Finanzas,Ana Rodríguez García,Contador Senior,#4A90D9
+Finanzas,Tesorería,Director de Finanzas,Miguel Fernández Ruiz,Jefe de Tesorería,#4A90D9
+Finanzas,Tesorería,Director de Finanzas,Carmen Díaz López,Oficial de Tesorería,#4A90D9
+Operaciones,Logística,Director de Operaciones,Fernando Gómez García,Jefe de Logística,#0A6AB9
+Operaciones,Logística,Director de Operaciones,Isabel García López,Coordinadora de Almacén,#0A6AB9
+Operaciones,Calidad,Director de Operaciones,Antonio Moreno Pérez,Responsable de Calidad,#0A6AB9
+Operaciones,Calidad,Director de Operaciones,Rosa Jiménez García,Auditor de Calidad,#0A6AB9
+Ventas,Ventas Directas,Director Comercial,David López García,Jefe de Ventas Presencial,#0078D4
+Ventas,Ventas Directas,Director Comercial,Elena Ruiz Pérez,Vendedor Senior,#0078D4
+Ventas,Ventas Directas,Director Comercial,José María García López,Vendedor,#0078D4
+Ventas,E-Commerce,Director Comercial,Patricia Sánchez García,Responsable E-Commerce,#0078D4
+Ventas,E-Commerce,Director Comercial,Víctor Hernández López,Especialista Digital,#0078D4
+Informática,Infraestructura,Director de IT,Luis Martínez García,Jefe de Infraestructura,#1B6DA6
+Informática,Infraestructura,Director de IT,Gonzalo Pérez López,Técnico de Sistemas,#1B6DA6
+Informática,Desarrollo,Director de IT,Sofía García García,Jefa de Desarrollo,#1B6DA6
+Informática,Desarrollo,Director de IT,Marco Rodríguez Pérez,Desarrollador Senior,#1B6DA6
+Informática,Desarrollo,Director de IT,Javier López García,Desarrollador Junior,#1B6DA6
+Marketing,Comunicación,Director Marketing,Natalia García López,Responsable de Comunicación,#2470C0
+Marketing,Comunicación,Director Marketing,Rubén Ruiz Pérez,Especialista en Social Media,#2470C0
+Marketing,Análisis,Director Marketing,Cristina López García,Analista de Datos,#2470C0
