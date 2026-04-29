@@ -542,7 +542,7 @@
                     </div>
                     <div class="sheet-actions">
                         <button class="btn btn-primary btn-sm" onclick="app.importData()">📥 Importar Excel/Numbers</button>
-                        <button class="btn btn-secondary btn-sm" onclick="app.syncFromExcelTable()">Actualizar organigrama</button>
+                        <button class="btn btn-success btn-sm" onclick="app.sincronizarAhora();">� Sincronizar</button>
                     </div>
                 </div>
                 <div class="sheet-wrap">
@@ -989,6 +989,7 @@
             else document.querySelector(`.nav-tab[onclick*="${view}"]`)?.classList.add('active');
 
             if (view === 'organigrama') {
+                this.renderOrganigramaView();
                 setTimeout(() => this.canvas.render(), 100);
             } else if (view === 'datos') {
                 this.renderDatosView();
@@ -1245,12 +1246,35 @@
             if (el) el.classList.add('active');
         },
 
-        closeModal(id) {
-            const el = document.getElementById(id);
-            if (el) {
-                el.classList.remove('active');
-                if (id.includes('dynamic')) el.remove();
+        sincronizarAhora() {
+            const columns = DataModel.excelColumns || [];
+            const rows = DataModel.excelRows || [];
+            
+            if (!columns.length || !rows.length) {
+                this.showToast('No hay datos para sincronizar', 'warning');
+                return;
             }
+
+            // Mapeo automático
+            const mappings = {};
+            columns.forEach(col => {
+                const normalized = this.normalizeHeader(col);
+                if (normalized.includes('area')) mappings['Área'] = col;
+                if (normalized.includes('subarea')) mappings['Subárea'] = col;
+                if (normalized.includes('responsable')) mappings['Responsable'] = col;
+                if (normalized.includes('persona') || normalized.includes('nombre')) mappings['Persona'] = col;
+                if (normalized.includes('color')) mappings['Color'] = col;
+            });
+
+            if (!Object.keys(mappings).length) {
+                this.showToast('No se detectaron columnas válidas (Área, Responsable, Persona, etc)', 'warning');
+                return;
+            }
+
+            // Sincroniza
+            this.importRowsWithMappings(rows, mappings, { silent: false });
+            this.renderStructureTree();
+            this.showToast('✅ Organigrama sincronizado correctamente', 'success');
         },
 
         showAddPersonModal() {
@@ -1494,6 +1518,8 @@
             this.save();
             // Sincroniza automáticamente el organigrama cuando se edita una celda
             this.syncFromExcelTable({ silent: true, keepView: true });
+            // Actualiza el sidebar SIEMPRE, sin importar qué vista estés viendo
+            this.renderStructureTree();
         },
 
         renameExcelColumn(colIndex, newName) {
@@ -1512,7 +1538,9 @@
             });
             this.save();
             this.renderDatosView();
+            // Sincroniza y actualiza sidebar siempre
             this.syncFromExcelTable({ silent: true, keepView: true });
+            this.renderStructureTree();
         },
 
         addExcelColumn() {
@@ -1525,6 +1553,7 @@
             this.save();
             this.renderDatosView();
             this.syncFromExcelTable({ silent: true, keepView: true });
+            this.renderStructureTree();
         },
 
         addExcelRow() {
@@ -1536,8 +1565,11 @@
             DataModel.excelRows.push(row);
             this.save();
             this.renderDatosView();
-            // Sincroniza después de mostrar la nueva fila
-            setTimeout(() => this.syncFromExcelTable({ silent: true, keepView: true }), 100);
+            // Sincroniza después de mostrar la nueva fila y actualiza sidebar siempre
+            setTimeout(() => {
+                this.syncFromExcelTable({ silent: true, keepView: true });
+                this.renderStructureTree();
+            }, 100);
         },
 
         deleteExcelRow(rowIndex) {
@@ -1545,26 +1577,29 @@
             this.save();
             this.renderDatosView();
             this.syncFromExcelTable({ silent: true, keepView: true });
+            this.renderStructureTree();
         },
 
         syncFromExcelTable(options = {}) {
             const columns = DataModel.excelColumns || [];
             const rows = DataModel.excelRows || [];
-            if (!columns.length) {
-                if (!options.silent) this.showToast('No hay datos de Excel para sincronizar', 'warning');
+            if (!columns.length || !rows.length) {
                 return;
             }
 
-            // Mapeo automático de columnas
-            const mappings = this.buildAutoMappings(columns);
-            
-            // Si hay columnas pero no se detectó mapeo, usar valores por defecto
-            if (!Object.values(mappings).some(Boolean)) {
-                // Intenta usar las primeras columnas si coinciden aproximadamente
-                const areaCol = columns.find(c => this.normalizeHeader(c).includes('area'));
-                const personaCol = columns.find(c => this.normalizeHeader(c).includes('persona') || this.normalizeHeader(c).includes('nombre'));
-                if (areaCol) mappings['Área'] = areaCol;
-                if (personaCol) mappings['Persona'] = personaCol;
+            // Mapeo automático - detecta las columnas de forma más robusta
+            const mappings = {};
+            columns.forEach(col => {
+                const normalized = this.normalizeHeader(col);
+                if (normalized.includes('area')) mappings['Área'] = col;
+                if (normalized.includes('subarea')) mappings['Subárea'] = col;
+                if (normalized.includes('responsable')) mappings['Responsable'] = col;
+                if (normalized.includes('persona') || normalized.includes('nombre')) mappings['Persona'] = col;
+                if (normalized.includes('color')) mappings['Color'] = col;
+            });
+
+            if (!Object.keys(mappings).length) {
+                return;
             }
 
             this.importRowsWithMappings(rows, mappings, options);
@@ -1572,78 +1607,80 @@
 
         importRowsWithMappings(data, mappings, options = {}) {
             const currentColumns = DataModel.excelColumns.length ? [...DataModel.excelColumns] : [...this._importHeaders];
-            const existingAreas = new Map(DataModel.areas.map(a => [a.name, a]));
-            const existingSubareas = new Map(DataModel.subareas.map(s => [s.name, s]));
-            const existingResponsibles = new Map(DataModel.responsibles.map(r => [r.name, r]));
-            const existingPersonas = new Map(DataModel.personas.map(p => [p.name, true]));
-            DataModel.setExcelData(currentColumns, data);
-            const processedAreas = existingAreas;
-            const processedSubareas = existingSubareas;
-            const processedResponsibles = existingResponsibles;
-            const processedPersonas = existingPersonas;
-
+            
+            // Procesa solo filas que tengan al menos un valor en las columnas mapeadas
             data.forEach(row => {
-                const areaName = row[mappings['Área']]?.toString().trim();
-                const subareaName = row[mappings['Subárea']]?.toString().trim();
-                const respName = row[mappings['Responsable']]?.toString().trim();
-                const personName = row[mappings['Persona']]?.toString().trim();
-                const color = row[mappings['Color']]?.toString().trim();
+                const areaName = mappings['Área'] && row[mappings['Área']] ? row[mappings['Área']].toString().trim() : null;
+                const subareaName = mappings['Subárea'] && row[mappings['Subárea']] ? row[mappings['Subárea']].toString().trim() : null;
+                const respName = mappings['Responsable'] && row[mappings['Responsable']] ? row[mappings['Responsable']].toString().trim() : null;
+                const personName = mappings['Persona'] && row[mappings['Persona']] ? row[mappings['Persona']].toString().trim() : null;
+                const color = mappings['Color'] && row[mappings['Color']] ? row[mappings['Color']].toString().trim() : null;
 
-                // Cada columna es independiente
-                if (areaName && !processedAreas.has(areaName)) {
-                    const area = DataModel.addArea({
-                        name: areaName,
-                        color: color || null,
-                        x: null,
-                        y: null,
-                        placed: false,
-                        superior: null
-                    });
-                    processedAreas.set(areaName, area);
+                // ÁREA - solo si no existe
+                if (areaName) {
+                    const exists = DataModel.areas.some(a => a.name === areaName);
+                    if (!exists) {
+                        DataModel.addArea({
+                            name: areaName,
+                            color: color || null,
+                            x: null,
+                            y: null,
+                            placed: false,
+                            superior: null
+                        });
+                    }
                 }
 
-                if (subareaName && !processedSubareas.has(subareaName)) {
-                    const subarea = DataModel.addSubarea({
-                        name: subareaName,
-                        parent: null,
-                        color: null,
-                        x: null,
-                        y: null,
-                        placed: false
-                    });
-                    processedSubareas.set(subareaName, subarea);
+                // SUBÁREA - solo si no existe
+                if (subareaName) {
+                    const exists = DataModel.subareas.some(s => s.name === subareaName);
+                    if (!exists) {
+                        DataModel.addSubarea({
+                            name: subareaName,
+                            parent: null,
+                            color: null,
+                            x: null,
+                            y: null,
+                            placed: false
+                        });
+                    }
                 }
 
-                if (respName && !processedResponsibles.has(respName)) {
-                    const resp = DataModel.addResponsible({
-                        name: respName,
-                        area: null,
-                        subarea: null,
-                        x: null,
-                        y: null,
-                        placed: false
-                    });
-                    processedResponsibles.set(respName, resp);
+                // RESPONSABLE - solo si no existe
+                if (respName) {
+                    const exists = DataModel.responsibles.some(r => r.name === respName);
+                    if (!exists) {
+                        DataModel.addResponsible({
+                            name: respName,
+                            area: null,
+                            subarea: null,
+                            x: null,
+                            y: null,
+                            placed: false
+                        });
+                    }
                 }
 
-                if (personName && !processedPersonas.has(personName)) {
-                    DataModel.addPersona({
-                        name: personName,
-                        area: null,
-                        responsible: null,
-                        x: 0,
-                        y: 0
-                    });
-                    processedPersonas.set(personName, true);
+                // PERSONA - solo si no existe
+                if (personName) {
+                    const exists = DataModel.personas.some(p => p.name === personName);
+                    if (!exists) {
+                        DataModel.addPersona({
+                            name: personName,
+                            area: null,
+                            responsible: null,
+                            x: 0,
+                            y: 0
+                        });
+                    }
                 }
             });
 
+            DataModel.setExcelData(currentColumns, data);
             this.save();
             this.renderStructureTree();
-            this.render();
-            this.renderStructureTree();
             if (options.keepView && this.currentView === 'datos') this.renderDatosView();
-            if (!options.silent) this.showToast('Organigrama actualizado desde Datos', 'success');
+            if (!options.silent) this.showToast('Organigrama actualizado', 'success');
         },
 
         escapeHtml(value) {
