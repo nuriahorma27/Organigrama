@@ -206,6 +206,8 @@
         .btn-secondary:hover { background-color: var(--color-primary-light); }
         .btn-danger { background-color: var(--color-danger); color: white; }
         .btn-danger:hover { background-color: #D33327; }
+        .btn-success { background-color: var(--color-success); color: white; }
+        .btn-success:hover { background-color: #2D8E47; }
         .btn-sm { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
         .btn-icon { padding: 0.5rem; background: none; border: none; color: var(--color-primary); cursor: pointer; font-size: 1rem; }
         .btn-icon:hover { color: var(--color-primary-dark); }
@@ -485,8 +487,8 @@
         <div class="header">
             <h1>📊 Organigrama — Santalucía Seguros</h1>
             <div class="header-actions">
-                <button class="btn btn-secondary btn-sm" onclick="app.importData()">📥 Importar</button>
                 <button class="btn btn-secondary btn-sm" onclick="app.exportData()">📤 Exportar</button>
+                <button class="btn btn-danger btn-sm" onclick="app.clearAll()">🗑️ Limpiar todo</button>
             </div>
         </div>
 
@@ -510,6 +512,11 @@
 
                 <div class="canvas-area">
                     <div class="canvas-toolbar">
+                        <!-- Board selector -->
+                        <div style="display:flex;border:1px solid var(--color-border);border-radius:6px;overflow:hidden;margin-right:0.5rem;">
+                            <button id="board-btn-santalucia" class="btn btn-primary btn-sm" style="border-radius:0;border:none;" onclick="app.switchBoard('santalucia')">Santalucía</button>
+                            <button id="board-btn-grupo" class="btn btn-secondary btn-sm" style="border-radius:0;border:none;border-left:1px solid var(--color-border);" onclick="app.switchBoard('grupo')">Grupo</button>
+                        </div>
                         <button class="btn btn-secondary btn-sm" onclick="app.showAddSectionModal('above')">➕ Sección encima</button>
                         <button class="btn btn-secondary btn-sm" onclick="app.showAddSectionModal('below')">➕ Sección debajo</button>
                         <button class="btn-icon" onclick="app.canvas.zoomIn()" title="Zoom +">🔍➕</button>
@@ -537,12 +544,17 @@
             <div id="datos-view" class="content-area stacked-content">
                 <div class="sheet-toolbar">
                     <div>
-                        <div class="sheet-title">Datos importados</div>
+                        <div class="sheet-title">Datos importados — <span id="datos-board-label" style="color:var(--color-primary);">Santalucía</span></div>
                         <small id="sheet-summary" style="color:var(--color-muted);">Importa un Excel para ver y editar sus columnas aquí.</small>
                     </div>
                     <div class="sheet-actions">
+                        <!-- Board selector en datos -->
+                        <div style="display:flex;border:1px solid var(--color-border);border-radius:6px;overflow:hidden;">
+                            <button id="datos-board-btn-santalucia" class="btn btn-primary btn-sm" style="border-radius:0;border:none;" onclick="app.switchBoard('santalucia')">Santalucía</button>
+                            <button id="datos-board-btn-grupo" class="btn btn-secondary btn-sm" style="border-radius:0;border:none;border-left:1px solid var(--color-border);" onclick="app.switchBoard('grupo')">Grupo</button>
+                        </div>
                         <button class="btn btn-primary btn-sm" onclick="app.importData()">📥 Importar Excel/Numbers</button>
-                        <button class="btn btn-success btn-sm" onclick="app.sincronizarAhora();">� Sincronizar</button>
+                        <button class="btn btn-success btn-sm" onclick="app.sincronizarAhora();">🔄 Sincronizar</button>
                     </div>
                 </div>
                 <div class="sheet-wrap">
@@ -968,14 +980,81 @@
     // ============================================
     const app = {
         currentView: 'organigrama',
+        currentBoard: 'santalucia',
+        boards: {},
         selectedElement: null,
-        _autoAreaColor: null, // stores auto-assigned color for current area form
+        _autoAreaColor: null,
         _importHeaders: [],
         _newSectionPosition: 'above',
         pendingResponsibleAssignment: null,
 
+        initBoards() {
+            const emptyData = () => ({
+                superiors: [], areas: [], subareas: [], responsibles: [],
+                subresponsibles: [], personas: [], manualConnections: [],
+                excelColumns: [], excelRows: []
+            });
+            if (!this.boards.santalucia) this.boards.santalucia = { name: 'Santalucía', data: emptyData() };
+            if (!this.boards.grupo) this.boards.grupo = { name: 'Grupo', data: emptyData() };
+        },
+
+        saveCurrentBoardState() {
+            const board = this.boards[this.currentBoard];
+            if (!board) return;
+            board.data = JSON.parse(JSON.stringify(DataModel.toJSON()));
+        },
+
+        loadBoardState(boardName) {
+            const board = this.boards[boardName];
+            if (board && board.data) {
+                DataModel.fromJSON(board.data);
+            } else {
+                DataModel.clear();
+                DataModel.excelColumns = [];
+                DataModel.excelRows = [];
+            }
+        },
+
+        switchBoard(boardName) {
+            if (boardName === this.currentBoard) return;
+            this.saveCurrentBoardState();
+            this.currentBoard = boardName;
+            this.loadBoardState(boardName);
+            this.updateBoardButtons();
+            this.save();
+            // Re-render la vista actual
+            if (this.currentView === 'organigrama') {
+                this.renderOrganigramaView();
+                setTimeout(() => this.canvas.render(), 50);
+            } else if (this.currentView === 'datos') {
+                this.renderDatosView();
+            } else {
+                this.renderResponsablesView();
+            }
+        },
+
+        updateBoardButtons() {
+            const isSanta = this.currentBoard === 'santalucia';
+            const groups = [
+                ['board-btn-santalucia', 'board-btn-grupo'],
+                ['datos-board-btn-santalucia', 'datos-board-btn-grupo']
+            ];
+            groups.forEach(([idS, idG]) => {
+                const btnS = document.getElementById(idS);
+                const btnG = document.getElementById(idG);
+                if (!btnS || !btnG) return;
+                btnS.className = isSanta ? 'btn btn-primary btn-sm' : 'btn btn-secondary btn-sm';
+                btnG.className = isSanta ? 'btn btn-secondary btn-sm' : 'btn btn-primary btn-sm';
+                btnS.style.cssText = 'border-radius:0;border:none;';
+                btnG.style.cssText = 'border-radius:0;border:none;border-left:1px solid var(--color-border);';
+            });
+            const lbl = document.getElementById('datos-board-label');
+            if (lbl) lbl.textContent = this.boards[this.currentBoard]?.name || this.currentBoard;
+        },
+
         init() {
             this.load();
+            this.updateBoardButtons();
             this.render();
             this.attachEventListeners();
         },
@@ -1072,7 +1151,7 @@
             const headers = Object.keys(data[0]);
             this._importHeaders = headers;
             const mappingDiv = document.getElementById('column-mapping');
-            const fields = ['Área', 'Subárea', 'Responsable', 'Persona', 'Color', 'Reporta a'];
+            const fields = ['Área', 'Subárea', 'Responsable'];
             let html = '<div class="alert alert-info">Mapea las columnas de tu archivo a los campos:</div>';
             fields.forEach(field => {
                 const normalizedField = this.normalizeHeader(field);
@@ -1163,10 +1242,8 @@
             menu.innerHTML = `
                 <div class="modal-content">
                     <div class="modal-header">📤 Exportar</div>
-                    <button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="app.exportJSON();app.closeModal('${modalId}')">📄 JSON</button>
-                    <button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="app.exportCSV();app.closeModal('${modalId}')">📊 CSV</button>
-                    <button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="app.exportPNG();app.closeModal('${modalId}')">🖼️ PNG</button>
-                    <button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="app.exportPDF();app.closeModal('${modalId}')">📑 PDF</button>
+                    <button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="app.exportPNG();app.closeModal('${modalId}')">🖼️ PNG (fondo blanco)</button>
+                    <button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="app.exportPDF();app.closeModal('${modalId}')">📑 PDF (fondo blanco)</button>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" onclick="app.closeModal('${modalId}')">Cancelar</button>
                     </div>
@@ -1175,53 +1252,39 @@
             document.body.appendChild(menu);
         },
 
-        exportJSON() {
-            const blob = new Blob([JSON.stringify(DataModel.toJSON(), null, 2)], { type: 'application/json' });
-            this.downloadFile(blob, 'organigrama.json');
-            this.showToast('Exportado como JSON', 'success');
-        },
-
-        exportCSV() {
-            let csv = 'Nombre,Tipo,Área,Subárea,Responsable,Color\n';
-            DataModel.areas.forEach(a => {
-                csv += `"${a.name}",Área,"${a.name}","","","${a.color}"\n`;
-            });
-            DataModel.subareas.forEach(s => {
-                const parent = DataModel.areas.find(a => a.id === s.parent);
-                csv += `"${s.name}",Subárea,"${parent ? parent.name : ''}","${s.name}","","${s.color}"\n`;
-            });
-            DataModel.responsibles.forEach(r => {
-                const area = DataModel.areas.find(a => a.id === r.area);
-                const sub = DataModel.subareas.find(s => s.id === r.subarea);
-                csv += `"${r.name}",Responsable,"${area ? area.name : ''}","${sub ? sub.name : ''}","",""\n`;
-            });
-            DataModel.personas.forEach(p => {
-                const area = DataModel.areas.find(a => a.id === p.area);
-                const resp = DataModel.responsibles.find(r => r.id === p.responsible);
-                csv += `"${p.name}",Persona,"${area ? area.name : ''}","","${resp ? resp.name : ''}",""\n`;
-            });
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-            this.downloadFile(blob, 'organigrama.csv');
-            this.showToast('Exportado como CSV', 'success');
-        },
-
         exportPNG() {
-            const canvas = document.getElementById('canvas');
-            canvas.toBlob(blob => {
+            const srcCanvas = document.getElementById('canvas');
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = srcCanvas.width;
+            exportCanvas.height = srcCanvas.height;
+            const ctx = exportCanvas.getContext('2d');
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+            ctx.drawImage(srcCanvas, 0, 0);
+            exportCanvas.toBlob(blob => {
                 this.downloadFile(blob, 'organigrama.png');
                 this.showToast('Exportado como PNG', 'success');
             });
         },
 
         exportPDF() {
-            const canvas = document.getElementById('canvas');
-            const el = document.createElement('div');
-            el.innerHTML = canvas.outerHTML;
+            const srcCanvas = document.getElementById('canvas');
+            const exportCanvas = document.createElement('canvas');
+            exportCanvas.width = srcCanvas.width;
+            exportCanvas.height = srcCanvas.height;
+            const ctx = exportCanvas.getContext('2d');
+            ctx.fillStyle = '#FFFFFF';
+            ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
+            ctx.drawImage(srcCanvas, 0, 0);
+            const img = exportCanvas.toDataURL('image/png');
+            const el = document.createElement('img');
+            el.src = img;
+            el.style.width = '100%';
             html2pdf().set({
                 margin: 10,
                 filename: 'organigrama.pdf',
                 image: { type: 'png', quality: 0.98 },
-                html2canvas: { scale: 2 },
+                html2canvas: { scale: 1, useCORS: true },
                 jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a3' }
             }).from(el).save();
             this.showToast('Exportado como PDF', 'success');
@@ -1246,34 +1309,33 @@
             if (el) el.classList.add('active');
         },
 
+        closeModal(id) {
+            const el = document.getElementById(id);
+            if (el) {
+                el.classList.remove('active');
+                if (id.endsWith('-dynamic')) el.remove();
+            }
+        },
+
         sincronizarAhora() {
             const columns = DataModel.excelColumns || [];
             const rows = DataModel.excelRows || [];
-            
+
             if (!columns.length || !rows.length) {
                 this.showToast('No hay datos para sincronizar', 'warning');
                 return;
             }
 
-            // Mapeo automático
-            const mappings = {};
-            columns.forEach(col => {
-                const normalized = this.normalizeHeader(col);
-                if (normalized.includes('area')) mappings['Área'] = col;
-                if (normalized.includes('subarea')) mappings['Subárea'] = col;
-                if (normalized.includes('responsable')) mappings['Responsable'] = col;
-                if (normalized.includes('persona') || normalized.includes('nombre')) mappings['Persona'] = col;
-                if (normalized.includes('color')) mappings['Color'] = col;
-            });
+            const mappings = this.buildMappingsFromColumns(columns);
 
             if (!Object.keys(mappings).length) {
-                this.showToast('No se detectaron columnas válidas (Área, Responsable, Persona, etc)', 'warning');
+                this.showToast('No se detectaron columnas válidas (Área, Responsable, etc)', 'warning');
                 return;
             }
 
-            // Sincroniza
             this.importRowsWithMappings(rows, mappings, { silent: false });
             this.renderStructureTree();
+            this.canvas.render();
             this.showToast('✅ Organigrama sincronizado correctamente', 'success');
         },
 
@@ -1472,6 +1534,11 @@
                 return;
             }
 
+            const isKeyCol = (col) => {
+                const nc = this.normalizeHeader(col);
+                return nc.includes('area') || nc.includes('área') || nc.includes('responsable');
+            };
+
             container.className = '';
             container.innerHTML = `
                 <table class="excel-table">
@@ -1494,9 +1561,10 @@
                             <tr>
                                 <td>${rowIndex + 1}</td>
                                 ${columns.map((col, colIndex) => `
-                                    <td>
+                                    <td style="position:relative;">
                                         <input class="cell-input" value="${this.escapeHtml(row[col] ?? '')}"
                                                onchange="app.updateExcelCell(${rowIndex}, ${colIndex}, this.value)">
+                                        ${isKeyCol(col) && row[col] ? `<button class="btn-small" onclick="app.clearExcelCell(${rowIndex},'${this.escapeAttr(col)}')" title="Borrar solo este campo" style="position:absolute;right:2px;top:50%;transform:translateY(-50%);color:var(--color-danger);font-size:0.7rem;">✕</button>` : ''}
                                     </td>`).join('')}
                                 <td><button class="btn-small" onclick="app.deleteExcelRow(${rowIndex})" title="Eliminar fila">🗑️</button></td>
                             </tr>`).join('')}
@@ -1514,12 +1582,32 @@
             if (!DataModel.excelRows[rowIndex]) return;
             const column = DataModel.excelColumns[colIndex];
             if (!column) return;
-            DataModel.excelRows[rowIndex][column] = value;
+            const oldValue = (DataModel.excelRows[rowIndex][column] ?? '').toString().trim();
+            const newValue = (value ?? '').toString().trim();
+            DataModel.excelRows[rowIndex][column] = newValue;
+
+            // Si cambia el nombre de una celda clave, actualiza el elemento en DataModel para que el canvas lo refleje
+            if (oldValue && newValue && oldValue !== newValue) {
+                const nc = this.normalizeHeader(column);
+                if (nc.includes('subarea') || nc.includes('subárea')) {
+                    const el = DataModel.subareas.find(s => s.name === oldValue);
+                    if (el) el.name = newValue;
+                } else if (nc.includes('area') || nc.includes('área')) {
+                    const el = DataModel.areas.find(a => a.name === oldValue);
+                    if (el) el.name = newValue;
+                } else if (nc.includes('responsable')) {
+                    const el = DataModel.responsibles.find(r => r.name === oldValue);
+                    if (el) el.name = newValue;
+                } else if (nc.includes('persona') || nc.includes('nombre')) {
+                    const el = DataModel.personas.find(p => p.name === oldValue);
+                    if (el) el.name = newValue;
+                }
+            }
+
             this.save();
-            // Sincroniza automáticamente el organigrama cuando se edita una celda
             this.syncFromExcelTable({ silent: true, keepView: true });
-            // Actualiza el sidebar SIEMPRE, sin importar qué vista estés viendo
             this.renderStructureTree();
+            this.canvas.render();
         },
 
         renameExcelColumn(colIndex, newName) {
@@ -1580,29 +1668,33 @@
             this.renderStructureTree();
         },
 
-        syncFromExcelTable(options = {}) {
-            const columns = DataModel.excelColumns || [];
-            const rows = DataModel.excelRows || [];
-            if (!columns.length || !rows.length) {
-                return;
-            }
-
-            // Mapeo automático - detecta las columnas de forma más robusta
+        buildMappingsFromColumns(columns) {
             const mappings = {};
             columns.forEach(col => {
                 const normalized = this.normalizeHeader(col);
-                if (normalized.includes('area')) mappings['Área'] = col;
-                if (normalized.includes('subarea')) mappings['Subárea'] = col;
+                // subarea FIRST (contains 'area' too, must check before 'area')
+                if (normalized.includes('subarea') || normalized.includes('subárea')) {
+                    mappings['Subárea'] = col;
+                } else if (normalized.includes('area') || normalized.includes('área')) {
+                    mappings['Área'] = col;
+                }
                 if (normalized.includes('responsable')) mappings['Responsable'] = col;
                 if (normalized.includes('persona') || normalized.includes('nombre')) mappings['Persona'] = col;
                 if (normalized.includes('color')) mappings['Color'] = col;
             });
+            return mappings;
+        },
 
-            if (!Object.keys(mappings).length) {
-                return;
-            }
+        syncFromExcelTable(options = {}) {
+            const columns = DataModel.excelColumns || [];
+            const rows = DataModel.excelRows || [];
+            if (!columns.length || !rows.length) return;
+
+            const mappings = this.buildMappingsFromColumns(columns);
+            if (!Object.keys(mappings).length) return;
 
             this.importRowsWithMappings(rows, mappings, options);
+            this.canvas.render();
         },
 
         importRowsWithMappings(data, mappings, options = {}) {
@@ -1830,127 +1922,79 @@
 
         renderResponsablesView() {
             const container = document.getElementById('responsables-content');
-            const placedAreas = DataModel.areas.filter(a => a.placed !== false);
-            const placedSubareas = DataModel.subareas.filter(s => s.placed !== false);
-            const placedSuperiors = DataModel.superiors.filter(s => s.placed !== false);
-            const assignedToPlaced = DataModel.responsibles.filter(r => {
-                const target = DataModel.getElementById(r.attachedTo || r.subarea || r.area);
-                return target && target.placed !== false;
-            });
+            const allResponsibles = DataModel.responsibles;
 
-            if (!assignedToPlaced.length) {
+            // Filtros por área en sidebar
+            const areaFiltersEl = document.getElementById('area-filters');
+            if (areaFiltersEl) {
+                if (DataModel.areas.length) {
+                    areaFiltersEl.innerHTML = DataModel.areas.map(a => `
+                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:pointer;padding:4px 6px;border-radius:4px;transition:background 0.15s;"
+                             onmouseenter="this.style.background='var(--color-background)'"
+                             onmouseleave="this.style.background='transparent'"
+                             onclick="app.filterByArea('${a.id}')">
+                            <span style="width:10px;height:10px;border-radius:2px;background:${a.color};flex-shrink:0;"></span>
+                            <span style="font-size:0.82rem;">${a.name}</span>
+                        </div>
+                    `).join('') + `<div style="margin-top:6px;">
+                        <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="app.clearAreaFilter()">Mostrar todas</button>
+                    </div>`;
+                } else {
+                    areaFiltersEl.innerHTML = '<div class="tree-empty">Sin áreas</div>';
+                }
+            }
+
+            if (!allResponsibles.length) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">👥</div>
                         <div class="empty-state-title">Sin responsables</div>
-                        <div class="empty-state-text">Arrastra responsables sobre cajas colocadas en el organigrama</div>
+                        <div class="empty-state-text">Importa datos o arrastra responsables sobre áreas del organigrama</div>
                     </div>`;
                 return;
             }
 
-            const areaFiltersEl = document.getElementById('area-filters');
-            if (areaFiltersEl) {
-                areaFiltersEl.innerHTML = placedAreas.map(a => `
-                    <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:pointer;padding:4px 6px;border-radius:4px;transition:background 0.15s;"
-                         onmouseenter="this.style.background='var(--color-background)'"
-                         onmouseleave="this.style.background='transparent'"
-                         onclick="app.filterByArea('${a.id}')">
-                        <span style="width:10px;height:10px;border-radius:2px;background:${a.color};flex-shrink:0;"></span>
-                        <span style="font-size:0.82rem;">${a.name}</span>
-                    </div>
-                `).join('') + `<div style="margin-top:6px;">
-                    <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="app.clearAreaFilter()">Mostrar todas</button>
-                </div>`;
-            }
-
-            let html = '<div class="responsible-tree">';
-
-            const renderResponsiblePills = (target) => {
-                const list = DataModel.getAssignedResponsibles(target);
-                if (!list.length) return '<div class="tree-empty">Sin responsables asignados</div>';
-                return `<ul class="person-list">${list.map(r => {
-                    const meta = this.getResponsibleScopeMeta(r.scope);
-                    return `<li class="person-list-item">
-                        <span><span class="color-dot" style="background:${meta.color};"></span>${r.name}</span>
-                        <small style="color:${meta.color};font-weight:700;">${meta.label}</small>
-                    </li>`;
-                }).join('')}</ul>`;
+            const renderResponsibleCard = (r) => {
+                const area = DataModel.areas.find(a => a.id === r.area);
+                const sub = DataModel.subareas.find(s => s.id === r.subarea);
+                const areaColor = area ? area.color : '#6B7C93';
+                let context = '';
+                if (area && sub) context = `<small style="color:var(--color-muted);display:block;margin-top:2px;">${area.name} › ${sub.name}</small>`;
+                else if (area) context = `<small style="color:var(--color-muted);display:block;margin-top:2px;">${area.name}</small>`;
+                return `
+                    <div class="person-list-item" data-area-id="${area ? area.id : ''}" style="border-left:3px solid ${areaColor};">
+                        <div>
+                            <span style="font-weight:600;">${this.escapeHtml(r.name)}</span>
+                            ${context}
+                        </div>
+                    </div>`;
             };
 
-            placedSuperiors.forEach(section => {
-                const list = DataModel.getAssignedResponsibles(section);
-                if (!list.length) return;
+            const scopes = [
+                { key: 'corporativo', label: 'Responsables Corporativos', color: RESPONSIBLE_SCOPE.corporativo.color },
+                { key: 'negocio',     label: 'Responsables Negocio',      color: RESPONSIBLE_SCOPE.negocio.color },
+                { key: 'sgs',         label: 'Responsables SGS',           color: RESPONSIBLE_SCOPE.sgs.color }
+            ];
+
+            let html = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.25rem;align-items:start;">';
+
+            scopes.forEach(scope => {
+                const scopeResps = allResponsibles.filter(r => (r.scope || 'corporativo') === scope.key);
                 html += `
-                    <div class="responsible-card" data-area-id="">
-                        <div class="responsible-header" style="background-color:${section.color || '#003B73'};">
+                    <div class="responsible-card">
+                        <div class="responsible-header" style="background-color:${scope.color};">
                             <div class="responsible-header-info">
-                                <div class="responsible-breadcrumb">Sección</div>
-                                <div class="responsible-name">${section.name}</div>
+                                <div class="responsible-name">${scope.label}</div>
                             </div>
-                            <span class="responsible-count">${list.length}</span>
+                            <span class="responsible-count">${scopeResps.length}</span>
                         </div>
-                        <div class="responsible-body">${renderResponsiblePills(section)}</div>
+                        <div class="responsible-body">
+                            ${scopeResps.length
+                                ? `<ul class="person-list">${scopeResps.map(r => renderResponsibleCard(r)).join('')}</ul>`
+                                : '<div class="tree-empty">Sin responsables en esta categoría</div>'}
+                        </div>
                     </div>`;
             });
-
-            placedAreas.forEach(area => {
-                const areaList = DataModel.getAssignedResponsibles(area);
-                const subs = placedSubareas.filter(s => s.parent === area.id);
-                if (!areaList.length && !subs.some(s => DataModel.getAssignedResponsibles(s).length)) return;
-                html += `
-                    <div class="responsible-card type-area" data-area-id="${area.id}">
-                        <div class="responsible-header" style="background-color:${area.color || '#0057A8'};">
-                            <div class="responsible-header-info">
-                                <div class="responsible-breadcrumb">Área</div>
-                                <div class="responsible-name">${area.name}</div>
-                            </div>
-                            <span class="responsible-count">${areaList.length}</span>
-                        </div>
-                        <div class="responsible-body">${renderResponsiblePills(area)}</div>
-                    </div>`;
-                subs.forEach(sub => {
-                    const subList = DataModel.getAssignedResponsibles(sub);
-                    if (!subList.length) return;
-                    html += `
-                        <div class="responsible-card type-subarea" data-area-id="${area.id}" style="margin-left:1.25rem;">
-                            <div class="responsible-header" style="background-color:${lightenColor(area.color || '#0057A8', 0.2)};">
-                                <div class="responsible-header-info">
-                                    <div class="responsible-breadcrumb"><span class="breadcrumb-area-badge">${area.name}</span><span>›</span><span class="breadcrumb-subarea-badge">${sub.name}</span></div>
-                                    <div class="responsible-name">${sub.name}</div>
-                                </div>
-                                <span class="responsible-count">${subList.length}</span>
-                            </div>
-                            <div class="responsible-body">${renderResponsiblePills(sub)}</div>
-                        </div>`;
-                });
-            });
-
-            const orphanSubareas = placedSubareas.filter(s => !s.parent);
-            orphanSubareas.forEach(sub => {
-                const subList = DataModel.getAssignedResponsibles(sub);
-                if (!subList.length) return;
-                html += `
-                    <div class="responsible-card type-subarea" data-area-id="">
-                        <div class="responsible-header" style="background-color:#4A90D9;">
-                            <div class="responsible-header-info">
-                                <div class="responsible-breadcrumb">Subárea</div>
-                                <div class="responsible-name">${sub.name}</div>
-                            </div>
-                            <span class="responsible-count">${subList.length}</span>
-                        </div>
-                        <div class="responsible-body">${renderResponsiblePills(sub)}</div>
-                    </div>`;
-            });
-
-            const renderedIds = new Set([
-                ...placedSuperiors.map(s => s.id),
-                ...placedAreas.map(a => a.id),
-                ...placedSubareas.map(s => s.id)
-            ]);
-            const stray = assignedToPlaced.filter(r => !renderedIds.has(r.attachedTo));
-            if (stray.length) {
-                html += `<div class="responsible-card"><div class="responsible-header" style="background:#6B7C93;"><div class="responsible-name">Otros</div><span class="responsible-count">${stray.length}</span></div><div class="responsible-body"><ul class="person-list">${stray.map(r => `<li class="person-list-item">${r.name}</li>`).join('')}</ul></div></div>`;
-            }
 
             html += '</div>';
             container.innerHTML = html;
@@ -1963,20 +2007,21 @@
         },
 
         filterResponsables(query) {
-            document.querySelectorAll('.responsible-card').forEach(card => {
-                card.style.display = card.textContent.toLowerCase().includes(query.toLowerCase()) ? 'block' : 'none';
+            const q = query.toLowerCase();
+            document.querySelectorAll('#responsables-content .person-list-item').forEach(item => {
+                item.style.display = item.textContent.toLowerCase().includes(q) ? 'flex' : 'none';
             });
         },
 
         filterByArea(areaId) {
-            document.querySelectorAll('.responsible-card').forEach(card => {
-                card.style.display = (!card.dataset.areaId || card.dataset.areaId === areaId) ? 'block' : 'none';
+            document.querySelectorAll('#responsables-content .person-list-item').forEach(item => {
+                item.style.display = (!item.dataset.areaId || item.dataset.areaId === areaId) ? 'flex' : 'none';
             });
         },
 
         clearAreaFilter() {
-            document.querySelectorAll('.responsible-card').forEach(card => {
-                card.style.display = 'block';
+            document.querySelectorAll('#responsables-content .person-list-item').forEach(item => {
+                item.style.display = 'flex';
             });
         },
 
@@ -2149,6 +2194,30 @@
                 this.render();
                 this.showToast('Elemento eliminado', 'success');
             }
+        },
+
+        clearAll() {
+            const boardName = this.boards[this.currentBoard]?.name || this.currentBoard;
+            if (!confirm(`¿Limpiar el board "${boardName}" y volver a empezar? Esta acción no se puede deshacer.`)) return;
+            DataModel.clear();
+            DataModel.excelColumns = [];
+            DataModel.excelRows = [];
+            this.boards[this.currentBoard] = {
+                name: this.boards[this.currentBoard]?.name || this.currentBoard,
+                data: { superiors: [], areas: [], subareas: [], responsibles: [], subresponsibles: [], personas: [], manualConnections: [], excelColumns: [], excelRows: [] }
+            };
+            this.save();
+            this.render();
+            this.canvas.setupCanvas();
+            this.canvas.render();
+            this.showToast(`Board "${boardName}" limpiado`, 'success');
+        },
+
+        clearExcelCell(rowIndex, colName) {
+            if (!DataModel.excelRows[rowIndex]) return;
+            const colIndex = DataModel.excelColumns.indexOf(colName);
+            if (colIndex === -1) return;
+            this.updateExcelCell(rowIndex, colIndex, '');
         },
 
         // ============================================
@@ -2918,13 +2987,39 @@
         // PERSISTENCIA
         // ============================================
         save() {
-            localStorage.setItem('organigrama-data-v2', JSON.stringify(DataModel.toJSON()));
+            this.saveCurrentBoardState();
+            const data = {
+                ...DataModel.toJSON(),
+                boards: this.boards,
+                currentBoard: this.currentBoard
+            };
+            localStorage.setItem('organigrama-data-v2', JSON.stringify(data));
         },
 
         load() {
             const saved = localStorage.getItem('organigrama-data-v2') || localStorage.getItem('organigrama-data');
             if (saved) {
-                try { DataModel.fromJSON(JSON.parse(saved)); } catch(e) { console.error(e); }
+                try {
+                    const data = JSON.parse(saved);
+                    this.boards = data.boards || {};
+                    this.currentBoard = data.currentBoard || 'santalucia';
+                    this.initBoards();
+                    // Retrocompatibilidad: si los boards están vacíos pero había datos en formato antiguo, migrarlos
+                    const boardData = this.boards[this.currentBoard]?.data;
+                    const boardEmpty = !boardData || (!boardData.areas?.length && !boardData.excelRows?.length);
+                    const oldDataExists = data.areas?.length > 0 || data.excelRows?.length > 0;
+                    if (boardEmpty && oldDataExists) {
+                        DataModel.fromJSON(data);
+                        this.saveCurrentBoardState();
+                    } else {
+                        this.loadBoardState(this.currentBoard);
+                    }
+                } catch(e) {
+                    console.error(e);
+                    this.initBoards();
+                }
+            } else {
+                this.initBoards();
             }
         },
 
