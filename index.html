@@ -728,6 +728,25 @@
         </div>
     </div>
 
+    <!-- Modal Tipo de Responsable -->
+    <div id="responsible-scope-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Tipo de liderazgo</div>
+            <div class="form-group">
+                <label id="responsible-scope-label">Selecciona dónde lidera</label>
+                <select id="responsible-scope-select">
+                    <option value="corporativo">Corporativo</option>
+                    <option value="negocio">Negocio</option>
+                    <option value="sgs">SGS</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="app.cancelResponsibleAssignment()">Cancelar</button>
+                <button class="btn btn-primary" onclick="app.confirmResponsibleAssignment()">Asignar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
 
@@ -749,6 +768,12 @@
         '#558B2F', // Verde oliva
         '#D84315', // Naranja oscuro
     ];
+
+    const RESPONSIBLE_SCOPE = {
+        corporativo: { label: 'Corporativo', color: '#003B73' },
+        negocio: { label: 'Negocio', color: '#4A90D9' },
+        sgs: { label: 'SGS', color: '#E8630A' }
+    };
 
     function getNextAreaColor() {
         const usedColors = new Set(DataModel.areas.map(a => a.color));
@@ -947,6 +972,7 @@
         _autoAreaColor: null, // stores auto-assigned color for current area form
         _importHeaders: [],
         _newSectionPosition: 'above',
+        pendingResponsibleAssignment: null,
 
         init() {
             this.load();
@@ -1374,12 +1400,10 @@
         addNewResponsible() {
             const name = document.getElementById('new-responsible-name').value.trim();
             if (!name) { this.showToast('Ingresa un nombre', 'warning'); return; }
-            const area = document.getElementById('new-responsible-area').value;
-            const subarea = document.getElementById('new-responsible-subarea').value;
-            const idx = DataModel.responsibles.length;
-            DataModel.addResponsible({ name, area: area || null, subarea: subarea || null, x: idx * 210 + 50, y: 320 });
+            DataModel.addResponsible({ name, area: null, subarea: null, x: null, y: null, placed: false });
             this.closeModal('add-responsible-modal');
             this.save();
+            this.renderStructureTree();
             this.render();
             this.showToast(`Responsable "${name}" creado`, 'success');
         },
@@ -1467,6 +1491,7 @@
             if (!column) return;
             DataModel.excelRows[rowIndex][column] = value;
             this.save();
+            this.syncFromExcelTable({ silent: true, keepView: true });
         },
 
         renameExcelColumn(colIndex, newName) {
@@ -1485,6 +1510,7 @@
             });
             this.save();
             this.renderDatosView();
+            this.syncFromExcelTable({ silent: true, keepView: true });
         },
 
         addExcelColumn() {
@@ -1496,6 +1522,7 @@
             DataModel.excelRows.forEach(row => row[name] = '');
             this.save();
             this.renderDatosView();
+            this.syncFromExcelTable({ silent: true, keepView: true });
         },
 
         addExcelRow() {
@@ -1507,24 +1534,29 @@
             DataModel.excelRows.push(row);
             this.save();
             this.renderDatosView();
+            this.syncFromExcelTable({ silent: true, keepView: true });
         },
 
         deleteExcelRow(rowIndex) {
             DataModel.excelRows.splice(rowIndex, 1);
             this.save();
             this.renderDatosView();
+            this.syncFromExcelTable({ silent: true, keepView: true });
         },
 
-        syncFromExcelTable() {
+        syncFromExcelTable(options = {}) {
             const columns = DataModel.excelColumns || [];
             const rows = DataModel.excelRows || [];
-            if (!columns.length) { this.showToast('No hay datos de Excel para sincronizar', 'warning'); return; }
+            if (!columns.length) {
+                if (!options.silent) this.showToast('No hay datos de Excel para sincronizar', 'warning');
+                return;
+            }
 
             const mappings = this.buildAutoMappings(columns);
-            this.importRowsWithMappings(rows, mappings);
+            this.importRowsWithMappings(rows, mappings, options);
         },
 
-        importRowsWithMappings(data, mappings) {
+        importRowsWithMappings(data, mappings, options = {}) {
             const currentColumns = DataModel.excelColumns.length ? [...DataModel.excelColumns] : [...this._importHeaders];
             const existingAreas = new Map(DataModel.areas.map(a => [a.name, a]));
             const existingSubareas = new Map(DataModel.subareas.map(s => [s.name, s]));
@@ -1595,7 +1627,8 @@
             this.renderStructureTree();
             this.render();
             this.renderStructureTree();
-            this.showToast('Organigrama actualizado desde Datos', 'success');
+            if (options.keepView && this.currentView === 'datos') this.renderDatosView();
+            if (!options.silent) this.showToast('Organigrama actualizado desde Datos', 'success');
         },
 
         escapeHtml(value) {
@@ -1674,6 +1707,10 @@
             return '';
         },
 
+        getResponsibleScopeMeta(scope) {
+            return RESPONSIBLE_SCOPE[scope] || RESPONSIBLE_SCOPE.corporativo;
+        },
+
         renderTreeResponsible(responsible) {
             return `
                 <div class="tree-row responsible" draggable="true" data-element-id="${responsible.id}">
@@ -1741,22 +1778,27 @@
 
         renderResponsablesView() {
             const container = document.getElementById('responsables-content');
-            const responsibles = DataModel.responsibles;
+            const placedAreas = DataModel.areas.filter(a => a.placed !== false);
+            const placedSubareas = DataModel.subareas.filter(s => s.placed !== false);
+            const placedSuperiors = DataModel.superiors.filter(s => s.placed !== false);
+            const assignedToPlaced = DataModel.responsibles.filter(r => {
+                const target = DataModel.getElementById(r.attachedTo || r.subarea || r.area);
+                return target && target.placed !== false;
+            });
 
-            if (!responsibles.length) {
+            if (!assignedToPlaced.length) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">👥</div>
                         <div class="empty-state-title">Sin responsables</div>
-                        <div class="empty-state-text">Carga datos o crea responsables desde la pestaña Organigrama</div>
+                        <div class="empty-state-text">Arrastra responsables sobre cajas colocadas en el organigrama</div>
                     </div>`;
                 return;
             }
 
-            // Render area filter buttons
             const areaFiltersEl = document.getElementById('area-filters');
             if (areaFiltersEl) {
-                areaFiltersEl.innerHTML = DataModel.areas.map(a => `
+                areaFiltersEl.innerHTML = placedAreas.map(a => `
                     <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:pointer;padding:4px 6px;border-radius:4px;transition:background 0.15s;"
                          onmouseenter="this.style.background='var(--color-background)'"
                          onmouseleave="this.style.background='transparent'"
@@ -1771,79 +1813,91 @@
 
             let html = '<div class="responsible-tree">';
 
-            responsibles.forEach(responsible => {
-                const area = DataModel.areas.find(a => a.id === responsible.area);
-                const subarea = DataModel.subareas.find(s => s.id === responsible.subarea);
-                const assignedPersonas = DataModel.personas.filter(p => p.responsible === responsible.id);
+            const renderResponsiblePills = (target) => {
+                const list = DataModel.getAssignedResponsibles(target);
+                if (!list.length) return '<div class="tree-empty">Sin responsables asignados</div>';
+                return `<ul class="person-list">${list.map(r => {
+                    const meta = this.getResponsibleScopeMeta(r.scope);
+                    return `<li class="person-list-item">
+                        <span><span class="color-dot" style="background:${meta.color};"></span>${r.name}</span>
+                        <small style="color:${meta.color};font-weight:700;">${meta.label}</small>
+                    </li>`;
+                }).join('')}</ul>`;
+            };
 
-                // Color header: if linked to subarea → lighter variant; if area only → area color
-                let headerColor = '#0057A8';
-                let isSubareaType = false;
-                if (area) {
-                    headerColor = subarea ? lightenColor(area.color, 0.2) : area.color;
-                    isSubareaType = !!subarea;
-                }
-
-                const breadcrumb = (() => {
-                    if (area && subarea) {
-                        return `<span class="breadcrumb-area-badge">📁 ${area.name}</span>
-                                <span style="opacity:0.7;">›</span>
-                                <span class="breadcrumb-subarea-badge">📂 ${subarea.name}</span>`;
-                    } else if (area) {
-                        return `<span class="breadcrumb-area-badge">📁 ${area.name}</span>`;
-                    }
-                    return '<span style="opacity:0.7;">Sin área asignada</span>';
-                })();
-
+            placedSuperiors.forEach(section => {
+                const list = DataModel.getAssignedResponsibles(section);
+                if (!list.length) return;
                 html += `
-                    <div class="responsible-card ${isSubareaType ? 'type-subarea' : 'type-area'}" data-area-id="${area ? area.id : ''}">
-                        <div class="responsible-header" style="background-color:${headerColor};">
+                    <div class="responsible-card" data-area-id="">
+                        <div class="responsible-header" style="background-color:${section.color || '#003B73'};">
                             <div class="responsible-header-info">
-                                <div class="responsible-breadcrumb">${breadcrumb}</div>
-                                <div class="responsible-name">${responsible.name}</div>
+                                <div class="responsible-breadcrumb">Sección</div>
+                                <div class="responsible-name">${section.name}</div>
                             </div>
-                            <span class="responsible-count">${assignedPersonas.length}</span>
+                            <span class="responsible-count">${list.length}</span>
                         </div>
-                        <div class="responsible-body">
-                            ${assignedPersonas.length > 0 ? `
-                                <ul class="person-list">
-                                    ${assignedPersonas.map(p => `
-                                        <li class="person-list-item">
-                                            <span>👤 ${p.name}</span>
-                                            <button class="btn-small" onclick="app.reassignPerson('${p.id}')" title="Reasignar">↔️</button>
-                                        </li>
-                                    `).join('')}
-                                </ul>
-                            ` : `<div class="alert alert-warning" style="margin:0;font-size:0.85rem;">Sin personas asignadas</div>`}
-                        </div>
-                    </div>
-                `;
+                        <div class="responsible-body">${renderResponsiblePills(section)}</div>
+                    </div>`;
             });
 
-            // Personas sin asignar
-            const unassigned = DataModel.personas.filter(p => !p.responsible);
-            if (unassigned.length) {
+            placedAreas.forEach(area => {
+                const areaList = DataModel.getAssignedResponsibles(area);
+                const subs = placedSubareas.filter(s => s.parent === area.id);
+                if (!areaList.length && !subs.some(s => DataModel.getAssignedResponsibles(s).length)) return;
                 html += `
-                    <div class="responsible-card">
-                        <div class="responsible-header" style="background-color:#856404;">
+                    <div class="responsible-card type-area" data-area-id="${area.id}">
+                        <div class="responsible-header" style="background-color:${area.color || '#0057A8'};">
                             <div class="responsible-header-info">
-                                <div class="responsible-breadcrumb">⚠️ Sin responsable asignado</div>
-                                <div class="responsible-name">Personas sin asignar</div>
+                                <div class="responsible-breadcrumb">Área</div>
+                                <div class="responsible-name">${area.name}</div>
                             </div>
-                            <span class="responsible-count">${unassigned.length}</span>
+                            <span class="responsible-count">${areaList.length}</span>
                         </div>
-                        <div class="responsible-body">
-                            <ul class="person-list">
-                                ${unassigned.map(p => `
-                                    <li class="person-list-item">
-                                        <span>👤 ${p.name}</span>
-                                        <button class="btn-small" onclick="app.reassignPerson('${p.id}')" title="Asignar">➕</button>
-                                    </li>
-                                `).join('')}
-                            </ul>
+                        <div class="responsible-body">${renderResponsiblePills(area)}</div>
+                    </div>`;
+                subs.forEach(sub => {
+                    const subList = DataModel.getAssignedResponsibles(sub);
+                    if (!subList.length) return;
+                    html += `
+                        <div class="responsible-card type-subarea" data-area-id="${area.id}" style="margin-left:1.25rem;">
+                            <div class="responsible-header" style="background-color:${lightenColor(area.color || '#0057A8', 0.2)};">
+                                <div class="responsible-header-info">
+                                    <div class="responsible-breadcrumb"><span class="breadcrumb-area-badge">${area.name}</span><span>›</span><span class="breadcrumb-subarea-badge">${sub.name}</span></div>
+                                    <div class="responsible-name">${sub.name}</div>
+                                </div>
+                                <span class="responsible-count">${subList.length}</span>
+                            </div>
+                            <div class="responsible-body">${renderResponsiblePills(sub)}</div>
+                        </div>`;
+                });
+            });
+
+            const orphanSubareas = placedSubareas.filter(s => !s.parent);
+            orphanSubareas.forEach(sub => {
+                const subList = DataModel.getAssignedResponsibles(sub);
+                if (!subList.length) return;
+                html += `
+                    <div class="responsible-card type-subarea" data-area-id="">
+                        <div class="responsible-header" style="background-color:#4A90D9;">
+                            <div class="responsible-header-info">
+                                <div class="responsible-breadcrumb">Subárea</div>
+                                <div class="responsible-name">${sub.name}</div>
+                            </div>
+                            <span class="responsible-count">${subList.length}</span>
                         </div>
-                    </div>
-                `;
+                        <div class="responsible-body">${renderResponsiblePills(sub)}</div>
+                    </div>`;
+            });
+
+            const renderedIds = new Set([
+                ...placedSuperiors.map(s => s.id),
+                ...placedAreas.map(a => a.id),
+                ...placedSubareas.map(s => s.id)
+            ]);
+            const stray = assignedToPlaced.filter(r => !renderedIds.has(r.attachedTo));
+            if (stray.length) {
+                html += `<div class="responsible-card"><div class="responsible-header" style="background:#6B7C93;"><div class="responsible-name">Otros</div><span class="responsible-count">${stray.length}</span></div><div class="responsible-body"><ul class="person-list">${stray.map(r => `<li class="person-list-item">${r.name}</li>`).join('')}</ul></div></div>`;
             }
 
             html += '</div>';
@@ -1959,6 +2013,52 @@
             this.render();
             this.renderStructureTree();
             this.showToast('Responsable desasignado', 'success');
+        },
+
+        requestResponsibleAssignment(responsibleId, targetId) {
+            const responsible = DataModel.getElementById(responsibleId);
+            const target = DataModel.getElementById(targetId);
+            if (!responsible || !target) return;
+            this.pendingResponsibleAssignment = { responsibleId, targetId };
+            document.getElementById('responsible-scope-label').textContent =
+                `${responsible.name} en ${target.name}`;
+            document.getElementById('responsible-scope-select').value = responsible.scope || 'corporativo';
+            this.openModal('responsible-scope-modal');
+        },
+
+        cancelResponsibleAssignment() {
+            this.pendingResponsibleAssignment = null;
+            this.closeModal('responsible-scope-modal');
+        },
+
+        confirmResponsibleAssignment() {
+            const pending = this.pendingResponsibleAssignment;
+            if (!pending) return;
+            const responsible = DataModel.getElementById(pending.responsibleId);
+            const target = DataModel.getElementById(pending.targetId);
+            if (!responsible || !target) return;
+            const scope = document.getElementById('responsible-scope-select').value;
+            const updates = {
+                attachedTo: target.id,
+                scope,
+                placed: false,
+                x: null,
+                y: null,
+                area: null,
+                subarea: null
+            };
+            if (target.type === 'area') updates.area = target.id;
+            if (target.type === 'subarea') {
+                const parent = DataModel.areas.find(a => a.id === target.parent);
+                updates.area = parent ? parent.id : null;
+                updates.subarea = target.id;
+            }
+            DataModel.updateElement(responsible.id, updates);
+            this.pendingResponsibleAssignment = null;
+            this.closeModal('responsible-scope-modal');
+            this.renderStructureTree();
+            this.render();
+            this.showToast('Responsable asignado', 'success');
         },
 
         unplaceElement(id) {
@@ -2219,28 +2319,8 @@
                 }
 
                 if (element.type === 'responsible') {
-                    element.attachedTo = target.id;
-                    element.x = null;
-                    element.y = null;
-                    element.placed = false;
-                    if (target.type === 'area') {
-                        element.area = target.id;
-                        element.subarea = null;
-                        app.showToast('Responsable asignado al área', 'success');
-                    }
-                    if (target.type === 'subarea') {
-                        const parent = DataModel.areas.find(a => a.id === target.parent);
-                        element.area = parent ? parent.id : null;
-                        element.subarea = target.id;
-                        app.showToast('Responsable asignado a la subárea', 'success');
-                    }
-                    if (target.type === 'superior') {
-                        element.area = null;
-                        element.subarea = null;
-                        app.showToast('Responsable asignado a la sección', 'success');
-                    }
-                    app.renderStructureTree();
-                    app.render();
+                    if (!['area', 'subarea', 'superior'].includes(target.type)) return;
+                    app.requestResponsibleAssignment(element.id, target.id);
                     return;
                 }
 
@@ -2610,31 +2690,46 @@
             },
 
             drawAssignmentLabel(element, x, y, w) {
-                const labels = [
-                    ...DataModel.getAssignedResponsibles(element).map(r => r.name),
-                    ...DataModel.getAssignedPersonas(element).map(p => p.name)
+                const entries = [
+                    ...DataModel.getAssignedResponsibles(element).map(r => ({
+                        text: r.name,
+                        color: app.getResponsibleScopeMeta(r.scope).color
+                    })),
+                    ...DataModel.getAssignedPersonas(element).map(p => ({
+                        text: p.name,
+                        color: '#6B7C93'
+                    }))
                 ];
-                if (!labels.length) return;
+                if (!entries.length) return;
                 const ctx = this.ctx;
-                const visible = labels.slice(0, 3);
-                const text = visible.join(' · ') + (labels.length > visible.length ? ` +${labels.length - visible.length}` : '');
-                const label = this.wrapText(text, w + 50);
-                const labelW = Math.min(w + 60, ctx.measureText(label).width + 18);
-                const labelH = 22;
-                const labelX = x + w / 2 - labelW / 2;
-                const labelY = y - labelH - 8;
                 ctx.save();
-                ctx.fillStyle = '#FFFFFF';
-                ctx.strokeStyle = '#D6E4F0';
-                ctx.lineWidth = 1;
-                this.roundRect(labelX, labelY, labelW, labelH, 6);
-                ctx.fill();
-                ctx.stroke();
-                ctx.fillStyle = '#1F2D3D';
                 ctx.font = 'bold 11px -apple-system, Arial, sans-serif';
-                ctx.textAlign = 'center';
+                const visible = entries.slice(0, 3);
+                const labelH = 22;
+                let cursorX = x + w / 2 - Math.min(w + 80, visible.reduce((sum, item) => sum + Math.min(90, ctx.measureText(item.text).width + 18) + 5, 0)) / 2;
+                const labelY = y - labelH - 8;
+                visible.forEach(item => {
+                    const label = this.wrapText(item.text, 76);
+                    const labelW = Math.min(90, ctx.measureText(label).width + 18);
+                    ctx.fillStyle = '#FFFFFF';
+                    ctx.strokeStyle = item.color;
+                    ctx.lineWidth = 1.5;
+                    this.roundRect(cursorX, labelY, labelW, labelH, 6);
+                    ctx.fill();
+                    ctx.stroke();
+                    ctx.fillStyle = item.color;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(label, cursorX + labelW / 2, labelY + labelH / 2);
+                    cursorX += labelW + 5;
+                });
+                if (entries.length > visible.length) {
+                    ctx.fillStyle = '#6B7C93';
+                    ctx.textAlign = 'left';
+                    ctx.textBaseline = 'middle';
+                    ctx.fillText(`+${entries.length - visible.length}`, cursorX, labelY + labelH / 2);
+                }
                 ctx.textBaseline = 'middle';
-                ctx.fillText(label, x + w / 2, labelY + labelH / 2);
                 ctx.restore();
             },
 
