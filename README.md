@@ -6,7 +6,9 @@ Aplicación web interactiva para crear, editar y visualizar organigramas organiz
 
 ### Importación de Datos
 - ✅ Importar desde Excel (.xlsx, .xls)
+- ✅ Importar desde Apple Numbers (.numbers) y OpenDocument (.ods)
 - ✅ Importar desde CSV
+- ✅ Ver y editar la pestaña Datos como tabla
 - ✅ Mapeo flexible de columnas
 - ✅ Soporte para múltiples estructuras de datos
 
@@ -73,6 +75,8 @@ El archivo debe incluir al menos una de estas columnas:
 | Rol/Puesto | Especialista | No |
 | Reporta a | Jefe de Selección | No |
 | Color | #0057A8 | No |
+
+También se aceptan archivos `.numbers` y `.ods`; si el libro incluye una hoja llamada **Datos**, se carga esa hoja directamente.
 
 ### Ejemplo CSV
 ```csv
