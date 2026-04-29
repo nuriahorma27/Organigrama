@@ -1118,11 +1118,12 @@
 
         buildAutoMappings(columns) {
             return {
-                'Área': this.guessColumn(columns, ['Área', 'Area', 'Áreas', 'Areas']),
-                'Subárea': this.guessColumn(columns, ['Subárea', 'Subarea', 'Subáreas', 'Subareas']),
-                'Responsable': this.guessColumn(columns, ['Responsable', 'Responsables']),
-                'Persona': this.guessColumn(columns, ['Persona', 'Personas', 'Nombre', 'Nombres', 'Empleado', 'Empleados']),
-                'Color': this.guessColumn(columns, ['Color'])
+                'Área': this.guessColumn(columns, ['Área', 'Area', 'Áreas', 'Areas', 'AREA']),
+                'Subárea': this.guessColumn(columns, ['Subárea', 'Subarea', 'Subáreas', 'Subareas', 'SUB-AREA', 'SUBAREA']),
+                'Responsable': this.guessColumn(columns, ['Responsable', 'Responsables', 'RESPONSABLE', 'JEFE']),
+                'Persona': this.guessColumn(columns, ['Persona', 'Personas', 'Nombre', 'Nombres', 'Empleado', 'Empleados', 'PERSONA', 'NOMBRE']),
+                'Rol': this.guessColumn(columns, ['Rol', 'Puesto', 'ROLE', 'PUESTO']),
+                'Color': this.guessColumn(columns, ['Color', 'COLOR'])
             };
         },
 
@@ -1491,6 +1492,7 @@
             if (!column) return;
             DataModel.excelRows[rowIndex][column] = value;
             this.save();
+            // Sincroniza automáticamente el organigrama cuando se edita una celda
             this.syncFromExcelTable({ silent: true, keepView: true });
         },
 
@@ -1534,7 +1536,8 @@
             DataModel.excelRows.push(row);
             this.save();
             this.renderDatosView();
-            this.syncFromExcelTable({ silent: true, keepView: true });
+            // Sincroniza después de mostrar la nueva fila
+            setTimeout(() => this.syncFromExcelTable({ silent: true, keepView: true }), 100);
         },
 
         deleteExcelRow(rowIndex) {
@@ -1552,7 +1555,18 @@
                 return;
             }
 
+            // Mapeo automático de columnas
             const mappings = this.buildAutoMappings(columns);
+            
+            // Si hay columnas pero no se detectó mapeo, usar valores por defecto
+            if (!Object.values(mappings).some(Boolean)) {
+                // Intenta usar las primeras columnas si coinciden aproximadamente
+                const areaCol = columns.find(c => this.normalizeHeader(c).includes('area'));
+                const personaCol = columns.find(c => this.normalizeHeader(c).includes('persona') || this.normalizeHeader(c).includes('nombre'));
+                if (areaCol) mappings['Área'] = areaCol;
+                if (personaCol) mappings['Persona'] = personaCol;
+            }
+
             this.importRowsWithMappings(rows, mappings, options);
         },
 
@@ -1575,6 +1589,7 @@
                 const personName = row[mappings['Persona']]?.toString().trim();
                 const color = row[mappings['Color']]?.toString().trim();
 
+                // Cada columna es independiente
                 if (areaName && !processedAreas.has(areaName)) {
                     const area = DataModel.addArea({
                         name: areaName,
@@ -1588,15 +1603,15 @@
                 }
 
                 if (subareaName && !processedSubareas.has(subareaName)) {
-                        const subarea = DataModel.addSubarea({
-                            name: subareaName,
-                            parent: null,
-                            color: null,
-                            x: null,
-                            y: null,
-                            placed: false
-                        });
-                        processedSubareas.set(subareaName, subarea);
+                    const subarea = DataModel.addSubarea({
+                        name: subareaName,
+                        parent: null,
+                        color: null,
+                        x: null,
+                        y: null,
+                        placed: false
+                    });
+                    processedSubareas.set(subareaName, subarea);
                 }
 
                 if (respName && !processedResponsibles.has(respName)) {
@@ -2894,6 +2909,20 @@
 
     // Inicializar
     window.addEventListener('load', () => {
+        // Limpia localStorage si existen datos problemáticos (secciones "compensacio" o "xx")
+        const saved = localStorage.getItem('organigrama-data-v2') || localStorage.getItem('organigrama-data');
+        if (saved) {
+            try {
+                const data = JSON.parse(saved);
+                // Elimina secciones con nombres específicos no deseados
+                if (data.superiors && Array.isArray(data.superiors)) {
+                    data.superiors = data.superiors.filter(s => 
+                        s.name && !['compensacio', 'xx', 'Compensación', 'XX'].includes(s.name.trim())
+                    );
+                }
+                localStorage.setItem('organigrama-data-v2', JSON.stringify(data));
+            } catch(e) { console.error(e); }
+        }
         app.canvas.init();
         app.init();
     });
