@@ -7,8 +7,7 @@
 
     <!-- Librerías CDN -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 
     <style>
         :root {
@@ -1288,41 +1287,37 @@
             document.body.appendChild(menu);
         },
 
-        exportPNG() {
-            const srcCanvas = document.getElementById('canvas');
-            const exportCanvas = document.createElement('canvas');
-            exportCanvas.width = srcCanvas.width;
-            exportCanvas.height = srcCanvas.height;
-            const ctx = exportCanvas.getContext('2d');
+        buildExportCanvas() {
+            const src = document.getElementById('canvas');
+            const exp = document.createElement('canvas');
+            exp.width  = src.width;
+            exp.height = src.height;
+            const ctx = exp.getContext('2d');
             ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-            ctx.drawImage(srcCanvas, 0, 0);
-            exportCanvas.toBlob(blob => {
+            ctx.fillRect(0, 0, exp.width, exp.height);
+            ctx.drawImage(src, 0, 0);
+            return exp;
+        },
+
+        exportPNG() {
+            this.buildExportCanvas().toBlob(blob => {
                 this.downloadFile(blob, 'organigrama.png');
                 this.showToast('Exportado como PNG', 'success');
             });
         },
 
         exportPDF() {
-            const srcCanvas = document.getElementById('canvas');
-            const exportCanvas = document.createElement('canvas');
-            exportCanvas.width = srcCanvas.width;
-            exportCanvas.height = srcCanvas.height;
-            const ctx = exportCanvas.getContext('2d');
-            ctx.fillStyle = '#FFFFFF';
-            ctx.fillRect(0, 0, exportCanvas.width, exportCanvas.height);
-            ctx.drawImage(srcCanvas, 0, 0);
-            const img = exportCanvas.toDataURL('image/png');
-            const el = document.createElement('img');
-            el.src = img;
-            el.style.width = '100%';
-            html2pdf().set({
-                margin: 10,
-                filename: 'organigrama.pdf',
-                image: { type: 'png', quality: 0.98 },
-                html2canvas: { scale: 1, useCORS: true },
-                jsPDF: { orientation: 'landscape', unit: 'mm', format: 'a3' }
-            }).from(el).save();
+            const exp = this.buildExportCanvas();
+            const imgData = exp.toDataURL('image/png');
+            const { jsPDF } = window.jspdf;
+            const W = exp.width, H = exp.height;
+            const orientation = W >= H ? 'landscape' : 'portrait';
+            // Crea el PDF con las dimensiones exactas del canvas (en píxeles)
+            const pdf = new jsPDF({ orientation, unit: 'px', format: [W, H], hotfixes: ['px_scaling'] });
+            const pW = pdf.internal.pageSize.getWidth();
+            const pH = pdf.internal.pageSize.getHeight();
+            pdf.addImage(imgData, 'PNG', 0, 0, pW, pH);
+            pdf.save('organigrama.pdf');
             this.showToast('Exportado como PDF', 'success');
         },
 
