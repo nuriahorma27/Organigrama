@@ -1982,7 +1982,7 @@
             let html = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.25rem;align-items:start;">';
 
             scopes.forEach(scope => {
-                const scopeResps = allResponsibles.filter(r => (r.scope || 'corporativo') === scope.key);
+                const scopeResps = allResponsibles.filter(r => r.scope === scope.key);
                 html += `
                     <div class="responsible-card">
                         <div class="responsible-header" style="background-color:${scope.color};">
