@@ -81,11 +81,11 @@
 
         /* Sidebar */
         .sidebar {
-            width: 300px;
+            width: 340px;
             background-color: var(--color-surface);
             border-right: 1px solid var(--color-border);
             overflow: hidden;
-            padding: 1.5rem;
+            padding: 1.1rem;
             display: flex;
             flex-direction: column;
             min-height: 0;
@@ -141,7 +141,7 @@
         .person-item:hover { background-color: var(--color-primary-light); border-color: var(--color-primary); }
         .person-item.unassigned { border-left: 3px solid var(--color-warning); }
         .person-actions { display: flex; gap: 0.25rem; }
-        .tree-panel { display: flex; flex-direction: column; gap: 0.75rem; }
+        .tree-panel { display: flex; flex-direction: column; gap: 0.75rem; min-height: 0; }
         .tree-area {
             border: 1px solid var(--color-border);
             border-radius: 8px;
@@ -152,31 +152,49 @@
             display: flex;
             align-items: center;
             gap: 0.5rem;
-            padding: 0.55rem 0.65rem;
+            padding: 0.38rem 0.55rem;
             cursor: grab;
-            min-height: 36px;
+            min-height: 30px;
+            font-size: 0.8rem;
         }
         .tree-row:active { cursor: grabbing; }
         .tree-row:hover { background: var(--color-background); }
         .tree-row.area { color: white; font-weight: 700; }
         .tree-row.subarea { padding-left: 1rem; font-weight: 600; }
-        .tree-row.responsible { padding-left: 1.65rem; font-size: 0.84rem; }
+        .tree-row.responsible { padding-left: 1.35rem; font-size: 0.78rem; }
         .tree-row .tree-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-        .tree-empty { color: var(--color-muted); font-size: 0.82rem; padding: 0.55rem 0.65rem; }
-        .structure-columns { display: grid; grid-template-columns: 1fr; gap: 0.9rem; }
+        .tree-empty { color: var(--color-muted); font-size: 0.78rem; padding: 0.45rem 0.55rem; }
+        .structure-columns { display: grid; grid-template-columns: 1fr; gap: 0.65rem; min-height: 0; }
         .structure-column {
             border: 1px solid var(--color-border);
             border-radius: 8px;
             overflow: hidden;
             background: var(--color-surface);
+            display: flex;
+            flex-direction: column;
+            min-height: 0;
         }
         .structure-column-title {
             padding: 0.45rem 0.65rem;
             background: var(--color-background);
             color: var(--color-muted);
-            font-size: 0.72rem;
+            font-size: 0.68rem;
             font-weight: 700;
             text-transform: uppercase;
+        }
+        .structure-column-search {
+            margin: 0.45rem 0.55rem;
+            width: calc(100% - 1.3rem);
+            padding: 0.34rem 0.5rem;
+            border: 1px solid var(--color-border);
+            border-radius: 4px;
+            font-size: 0.76rem;
+        }
+        .structure-column-list {
+            height: 188px;
+            overflow-y: auto;
+            min-height: 0;
+            border-top: 1px solid var(--color-border);
         }
         .btn-small {
             background: none;
@@ -590,6 +608,12 @@
             font-size: 0.95rem;
             white-space: normal;
             overflow-wrap: anywhere;
+        }
+        .matrix-area-boundary {
+            border-left: 4px solid #FFFFFF !important;
+        }
+        .matrix-area-cell {
+            border-left: 4px solid #FFFFFF !important;
         }
         .cell-input {
             width: 100%;
@@ -1208,6 +1232,7 @@
         currentView: 'organigrama',
         currentBoard: 'p1',
         matrizViewMode: 'nivel1',
+        structureSearch: { area: '', subarea: '', responsible: '' },
         boards: {},
         selectedElement: null,
         _autoAreaColor: null,
@@ -1240,6 +1265,7 @@
             if (board && board.data) {
                 DataModel.fromJSON(board.data);
                 DataModel.areas.forEach(a => a.color = AREA_COLOR);
+                DataModel.subareas.forEach(s => s.color = SUBAREA_COLOR);
                 DataModel.responsibles.forEach(r => {
                     if (r.fromExcel && !r.manualAssigned) {
                         Object.assign(r, {
@@ -1874,9 +1900,7 @@
             const sel = document.getElementById('new-subarea-parent');
             const opt = sel.options[sel.selectedIndex];
             if (!opt) return;
-            const areaColor = opt.dataset.color;
-            const derived = areaColor ? lightenColor(areaColor, 0.55) : '#D9ECFF';
-            document.getElementById('subarea-color-preview').style.backgroundColor = derived;
+            document.getElementById('subarea-color-preview').style.backgroundColor = SUBAREA_COLOR;
         },
 
         showAddResponsibleModal() {
@@ -1950,7 +1974,7 @@
             const color = document.getElementById('new-area-color').value;
             const hasPlacedElements = this.hasPlacedElements();
             const area = DataModel.addArea({ name, color, x: null, y: null, placed: false });
-            if (!hasPlacedElements) this.canvas.placeElementAtPaperCenter(area);
+            if (!hasPlacedElements) this.canvas.placeAreaAtRowCenter(area);
             this.closeModal('add-area-modal');
             this.save();
             this.renderStructureTree();
@@ -1964,7 +1988,7 @@
             const parent = document.getElementById('new-subarea-parent').value;
             if (!parent) { this.showToast('Selecciona el área padre', 'warning'); return; }
             const area = DataModel.areas.find(a => a.id === parent);
-            DataModel.addSubarea({ name, parent, color: area ? lightenColor(area.color, 0.55) : null, x: null, y: null, placed: area?.placed === true, manualAssigned: true });
+            DataModel.addSubarea({ name, parent, color: SUBAREA_COLOR, x: null, y: null, placed: area?.placed === true, manualAssigned: true });
             this.closeModal('add-subarea-modal');
             this.save();
             this.renderStructureTree();
@@ -2319,24 +2343,31 @@
             const renderItems = (items, kind) => items.length
                 ? items.map(item => this.renderStructureItem(item, kind)).join('')
                 : '<div class="tree-empty">Sin datos</div>';
+            const searchValue = kind => this.escapeAttr(this.structureSearch[kind] || '');
+            const filterItems = (items, kind) => {
+                const q = (this.structureSearch[kind] || '').trim().toLowerCase();
+                if (!q) return items;
+                return items.filter(item => (item.name || '').toLowerCase().includes(q));
+            };
+            const renderColumn = (title, kind, items) => `
+                <div class="structure-column" data-structure-kind="${kind}">
+                    <div class="structure-column-title">${title}</div>
+                    ${['area', 'subarea', 'responsible'].includes(kind) ? `
+                        <input class="structure-column-search" type="search"
+                               placeholder="Buscar ${title.toLowerCase()}..."
+                               value="${searchValue(kind)}"
+                               oninput="app.filterStructureColumn('${kind}', this.value)">
+                    ` : ''}
+                    <div class="structure-column-list">
+                        ${renderItems(filterItems(items, kind), kind)}
+                    </div>
+                </div>`;
             let html = `
                 <div class="structure-columns">
-                    <div class="structure-column">
-                        <div class="structure-column-title">Áreas</div>
-                        ${renderItems(DataModel.areas, 'area')}
-                    </div>
-                    <div class="structure-column">
-                        <div class="structure-column-title">Subáreas</div>
-                        ${renderItems(DataModel.subareas, 'subarea')}
-                    </div>
-                    <div class="structure-column">
-                        <div class="structure-column-title">Responsables</div>
-                        ${renderItems(DataModel.responsibles, 'responsible')}
-                    </div>
-                    <div class="structure-column">
-                        <div class="structure-column-title">Secciones</div>
-                        ${renderItems(DataModel.superiors, 'superior')}
-                    </div>
+                    ${renderColumn('Áreas', 'area', DataModel.areas)}
+                    ${renderColumn('Subáreas', 'subarea', DataModel.subareas)}
+                    ${renderColumn('Responsables', 'responsible', DataModel.responsibles)}
+                    ${renderColumn('Secciones', 'superior', DataModel.superiors)}
                 </div>`;
             container.innerHTML = html;
             container.querySelectorAll('[data-element-id]').forEach(item => {
@@ -2350,16 +2381,28 @@
             });
         },
 
+        filterStructureColumn(kind, value) {
+            this.structureSearch[kind] = value || '';
+            this.renderStructureTree();
+            const input = document.querySelector(`.structure-column[data-structure-kind="${kind}"] .structure-column-search`);
+            if (input) {
+                input.focus();
+                const end = input.value.length;
+                input.setSelectionRange(end, end);
+            }
+        },
+
         renderStructureItem(item, kind) {
-            const color = kind === 'area' ? item.color : kind === 'subarea' ? item.color || '#D9ECFF' : kind === 'superior' ? item.color || '#003B73' : '#F7FAFC';
+            const color = kind === 'area' ? item.color : kind === 'subarea' ? SUBAREA_COLOR : kind === 'superior' ? item.color || '#003B73' : '#F7FAFC';
             const style = kind === 'area'
                 ? `background:${color};color:white;`
                 : kind === 'subarea'
-                    ? `border-left:5px solid #4A90D9;background:${color};`
+                    ? `border-left:5px solid ${AREA_COLOR};background:${color};`
                     : kind === 'superior' ? `background:${color};color:white;` : '';
             const assignedTo = kind === 'responsible' ? this.getResponsibleAssignmentName(item) : '';
+            const title = kind === 'subarea' ? ` title="${this.escapeAttr(item.name)}"` : '';
             return `
-                <div class="tree-row ${kind}" draggable="true" data-element-id="${item.id}" style="${style}">
+                <div class="tree-row ${kind}" draggable="true" data-element-id="${item.id}" style="${style}"${title}>
                     <span class="tree-name">${this.escapeHtml(item.name)}</span>
                     ${assignedTo ? `<button class="btn-small" onclick="event.stopPropagation();app.unassignResponsible('${item.id}')" title="Quitar asignación">✕</button>` : ''}
                     ${item.placed === true ? `<button class="btn-small" onclick="event.stopPropagation();app.unplaceElement('${item.id}')" title="Quitar del papel">✕</button>` : ''}
@@ -2640,7 +2683,7 @@
             }
             const area = DataModel.areas.find(a => a.id === areaId);
             subarea.parent = areaId;
-            subarea.color = area ? lightenColor(area.color, 0.55) : subarea.color;
+            subarea.color = SUBAREA_COLOR;
             subarea.manualAssigned = true;
             subarea.placed = true;
             this.closeModal(modalId);
@@ -2739,11 +2782,11 @@
                     <thead>
                         <tr>
                             <th colspan="2" class="matrix-stub-header"></th>
-                            ${areas.map(a => `<th class="matrix-area-header">${this.escapeHtml(a.name)}</th>`).join('')}
+                            ${areas.map(a => `<th class="matrix-area-header matrix-area-boundary">${this.escapeHtml(a.name)}</th>`).join('')}
                         </tr>
                     </thead>
                     <tbody>
-                        ${rows.map(row => renderLevelCells(row, areas.map(area => `<td style="min-width:240px;vertical-align:middle;text-align:center;background:${row.bg};padding:1rem;">${cellForNivel1(row, area)}</td>`).join(''))).join('')}
+                        ${rows.map(row => renderLevelCells(row, areas.map(area => `<td class="matrix-area-cell" style="min-width:240px;vertical-align:middle;text-align:center;background:${row.bg};padding:1rem;">${cellForNivel1(row, area)}</td>`).join(''))).join('')}
                     </tbody>
                 </table>`;
                 return;
@@ -2801,13 +2844,14 @@
                             ${areas.map(area => {
                                 const subareaCount = DataModel.subareas.filter(s => s.parent === area.id && s.placed === true).length;
                                 const count = subareaCount > 0 ? subareaCount : 1;
-                                return `<th colspan="${count}" class="matrix-area-header">${this.escapeHtml(area.name)}</th>`;
+                                return `<th colspan="${count}" class="matrix-area-header matrix-area-boundary">${this.escapeHtml(area.name)}</th>`;
                             }).join('')}
                         </tr>
                         <tr>
-                            ${subareaColumns.map(col => {
+                            ${subareaColumns.map((col, index) => {
+                                const isAreaStart = index === 0 || subareaColumns[index - 1].area.id !== col.area.id;
                                 if (col.sub) {
-                                    return `<th class="matrix-subarea-header">${this.escapeHtml(col.sub.name)}</th>`;
+                                    return `<th class="matrix-subarea-header ${isAreaStart ? 'matrix-area-boundary' : ''}">${this.escapeHtml(col.sub.name)}</th>`;
                                 } else {
                                     return '';
                                 }
@@ -2815,13 +2859,14 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${rows.map(row => renderLevelCells(row, subareaColumns.map(col => {
+                        ${rows.map(row => renderLevelCells(row, subareaColumns.map((col, index) => {
                             const items = responsiblesFor(row, col.area, col.sub);
                             const directItems = col.sub ? items : items.filter(r => !r.subarea);
                             const uniqueNames = [...new Set(directItems.map(r => r.name).filter(Boolean))];
                             const cellBg = col.sub ? lightenColor(col.area.color, 0.9) : lightenColor(col.area.color, 0.96);
                             const content = uniqueNames.length ? this.renderNamePills(uniqueNames, row.color, 3) : '<span style="color:#A0AEC0;">-</span>';
-                            return `<td style="min-width:240px;vertical-align:middle;text-align:center;background:${cellBg};padding:1rem;">${content}</td>`;
+                            const isAreaStart = index === 0 || subareaColumns[index - 1].area.id !== col.area.id;
+                            return `<td class="${isAreaStart ? 'matrix-area-cell' : ''}" style="min-width:240px;vertical-align:middle;text-align:center;background:${cellBg};padding:1rem;">${content}</td>`;
                         }).join(''))).join('')}
                     </tbody>
                 </table>`;
@@ -3122,12 +3167,24 @@
                 };
             },
 
+            getAreaRowY() {
+                return 160;
+            },
+
             placeElementAtPaperCenter(element) {
                 const center = this.getPaperCenter();
                 const size = this.getBoxSize(element);
                 element.x = center.x - size.w / 2;
                 element.y = center.y - size.h / 2;
                 element.placed = true;
+            },
+
+            placeAreaAtRowCenter(area) {
+                const center = this.getPaperCenter();
+                const size = this.getBoxSize(area);
+                area.x = center.x - size.w / 2;
+                area.y = this.getAreaRowY();
+                area.placed = true;
             },
 
             attachEvents() {
@@ -3364,7 +3421,7 @@
                 const area = from.type === 'area' ? from : to.type === 'area' ? to : null;
                 if (subarea && area) {
                     subarea.parent = area.id;
-                    subarea.color = lightenColor(area.color, 0.55);
+                    subarea.color = SUBAREA_COLOR;
                     subarea.manualAssigned = true;
                     DataModel.manualConnections = DataModel.manualConnections.filter(connection => {
                         const a = DataModel.getElementById(connection.from);
@@ -3409,6 +3466,7 @@
                     if (parent && element.y <= (parent.y || 50) + 80) element.y = (parent.y || 50) + 100;
                 }
                 if (element.type === 'area') {
+                    element.y = this.getAreaRowY();
                     DataModel.subareas.filter(s => s.parent === element.id).forEach(sub => {
                         if ((sub.y || 0) <= (element.y || 0) + 80) sub.y = (element.y || 0) + 100;
                     });
@@ -3926,8 +3984,8 @@
                 } else if (element.type === 'subarea') {
                     const W = 190, H = 55;
                     const parentArea = DataModel.areas.find(a => a.id === element.parent);
-                    const areaColor = parentArea ? parentArea.color : '#4A90D9';
-                    const bgColor = element.color || lightenColor(areaColor, 0.75);
+                    const areaColor = parentArea ? parentArea.color : AREA_COLOR;
+                    const bgColor = SUBAREA_COLOR;
                     this.drawAssignmentLabel(element, x, y, W);
 
                     ctx.shadowColor = 'rgba(0,0,0,0.1)';
@@ -4133,7 +4191,7 @@
                 const H_GAP_SUB  = 30;
                 const H_GAP_RESP = 30;
                 const V_SUP      = 40;
-                const V_AREA     = 160;
+                const V_AREA     = this.getAreaRowY();
                 const V_SUB      = 280;
                 const V_RESP     = 420;
                 let V_SUP_LOW    = 560;
@@ -4304,6 +4362,7 @@
                     element.x = point.x - size.w / 2;
                     element.y = point.y - size.h / 2;
                     element.placed = true;
+                    if (element.type === 'area') element.y = this.getAreaRowY();
                     if (element.type === 'subarea') {
                         const target = this.hitTest(point.x, point.y, element.id);
                         const suggestedAreaId = target?.type === 'area' ? target.id : '';
@@ -4349,6 +4408,7 @@
             this.loadBoardState(this.currentBoard);
             this.sanitizeManualConnections();
             DataModel.areas.forEach(a => a.color = AREA_COLOR);
+            DataModel.subareas.forEach(s => s.color = SUBAREA_COLOR);
             DataModel.responsibles.forEach(r => {
                 if (r.fromExcel && !r.manualAssigned) {
                     Object.assign(r, {
