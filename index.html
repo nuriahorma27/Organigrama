@@ -693,6 +693,50 @@
         .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; color: var(--color-muted); }
         .legend-swatch { width: 16px; height: 16px; border-radius: 3px; }
         .legend-swatch.outline { background: white; border: 2px solid var(--color-primary); }
+        .canvas-fab-group {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            z-index: 30;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            align-items: flex-end;
+        }
+        .canvas-fab-group .btn-fab {
+            padding: 0.55rem 1.1rem;
+            border-radius: 24px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            border: none;
+            cursor: pointer;
+            box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+            letter-spacing: 0.02em;
+            white-space: nowrap;
+            transition: box-shadow 0.15s, transform 0.1s;
+        }
+        .canvas-fab-group .btn-fab:hover { transform: translateY(-1px); box-shadow: 0 6px 18px rgba(0,0,0,0.22); }
+        .canvas-fab-group .btn-fab-add  { background: var(--color-primary); color: #fff; }
+        .canvas-fab-group .btn-fab-edit { background: var(--color-surface); color: var(--color-text); border: 1px solid var(--color-border); }
+        .add-picker-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.75rem;
+            margin-top: 0.5rem;
+        }
+        .add-picker-btn {
+            padding: 1rem;
+            border: 2px solid var(--color-border);
+            border-radius: 8px;
+            background: var(--color-surface);
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 600;
+            color: var(--color-text);
+            text-align: center;
+            transition: border-color 0.15s, background 0.15s;
+        }
+        .add-picker-btn:hover { border-color: var(--color-primary); background: var(--color-primary-light); }
         .responsables-static-view {
             flex: 1;
             overflow-y: auto;
@@ -738,7 +782,6 @@
 
                 <div class="canvas-area">
                     <div class="canvas-toolbar">
-                        <button class="btn btn-secondary btn-sm" onclick="app.showAddSectionWizard()">➕ Añadir sección</button>
                         <div class="toolbar-group" aria-label="Zoom">
                             <button class="toolbar-button" onclick="app.canvas.zoomOut()" title="Alejar">−</button>
                             <button class="toolbar-button" onclick="app.canvas.zoomIn()" title="Acercar">+</button>
@@ -763,6 +806,10 @@
                         <span class="legend-item"><span class="legend-swatch" style="background:#003B73;"></span>Corporativo</span>
                         <span class="legend-item"><span class="legend-swatch" style="background:#4A90D9;"></span>Negocio</span>
                         <span class="legend-item"><span class="legend-swatch" style="background:#E8630A;"></span>SGS</span>
+                    </div>
+                    <div class="canvas-fab-group" id="canvas-fab-group">
+                        <button class="btn-fab btn-fab-add" onclick="app.showAddNewPicker()">+ Añadir nuevo</button>
+                        <button class="btn-fab btn-fab-edit" onclick="app.showRenameModal()">✎ Modificar</button>
                     </div>
                 </div>
             </div>
@@ -950,7 +997,7 @@
         <div class="modal-content">
             <div class="modal-header">Nueva Subárea</div>
             <div class="form-group">
-                <label>Área padre</label>
+                <label>Área padre <small style="color:var(--color-muted);">(opcional)</small></label>
                 <select id="new-subarea-parent" onchange="app.updateSubareaColorPreview()"></select>
             </div>
             <div class="form-group">
@@ -1017,6 +1064,78 @@
             <div class="modal-footer">
                 <button class="btn btn-secondary" onclick="app.cancelResponsibleAssignment()">Cancelar</button>
                 <button class="btn btn-primary" onclick="app.confirmResponsibleAssignment()">Asignar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Añadir Nuevo (picker) -->
+    <div id="add-new-picker-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Añadir nuevo</div>
+            <div class="add-picker-grid">
+                <button class="add-picker-btn" onclick="app.showAddByName('area')">
+                    <div style="font-size:1.4rem;margin-bottom:0.3rem;">▦</div>
+                    Área
+                </button>
+                <button class="add-picker-btn" onclick="app.showAddByName('subarea')">
+                    <div style="font-size:1.4rem;margin-bottom:0.3rem;">◫</div>
+                    Subárea
+                </button>
+                <button class="add-picker-btn" onclick="app.showAddByName('responsible')">
+                    <div style="font-size:1.4rem;margin-bottom:0.3rem;">👤</div>
+                    Responsable
+                </button>
+                <button class="add-picker-btn" onclick="app.showAddByName('superior')">
+                    <div style="font-size:1.4rem;margin-bottom:0.3rem;">⬡</div>
+                    Sección
+                </button>
+            </div>
+            <div class="modal-footer" style="margin-top:1rem;">
+                <button class="btn btn-secondary" onclick="app.closeModal('add-new-picker-modal')">Cancelar</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Añadir por nombre -->
+    <div id="add-by-name-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header" id="add-by-name-title">Nuevo elemento</div>
+            <div class="form-group">
+                <label id="add-by-name-label">Nombre</label>
+                <input type="text" id="add-by-name-input" placeholder="Escribe el nombre">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="app.closeModal('add-by-name-modal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="app.confirmAddByName()">Crear</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal Modificar (renombrar) -->
+    <div id="rename-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">Modificar</div>
+            <div class="form-group">
+                <label>Tipo</label>
+                <select id="rename-type" onchange="app.populateRenameItems()">
+                    <option value="">-- Selecciona tipo --</option>
+                    <option value="superior">Sección</option>
+                    <option value="area">Área</option>
+                    <option value="subarea">Subárea</option>
+                    <option value="responsible">Responsable</option>
+                </select>
+            </div>
+            <div class="form-group" id="rename-item-group" style="display:none;">
+                <label id="rename-item-label">Elemento</label>
+                <select id="rename-item"></select>
+            </div>
+            <div class="form-group" id="rename-name-group" style="display:none;">
+                <label>Nuevo nombre</label>
+                <input type="text" id="rename-new-name" placeholder="Escribe el nuevo nombre">
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="app.closeModal('rename-modal')">Cancelar</button>
+                <button class="btn btn-primary" id="rename-save-btn" onclick="app.saveRename()" style="display:none;">Guardar</button>
             </div>
         </div>
     </div>
@@ -1370,6 +1489,9 @@
             document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
             if (event && event.target) event.target.classList.add('active');
             else document.querySelector(`.nav-tab[onclick*="${view}"]`)?.classList.add('active');
+
+            const fab = document.getElementById('canvas-fab-group');
+            if (fab) fab.style.display = view === 'organigrama' ? '' : 'none';
 
             if (view === 'organigrama') {
                 this.renderOrganigramaView();
@@ -1977,15 +2099,9 @@
         showAddSubareaModal() {
             const parentSelect = document.getElementById('new-subarea-parent');
             parentSelect.disabled = false;
-            const placedAreas = DataModel.areas.filter(a => a.placed === true);
-            if (!placedAreas.length) {
-                parentSelect.innerHTML = '<option value="">Primero arrastra un área al canvas</option>';
-                parentSelect.disabled = true;
-            } else {
-                parentSelect.innerHTML = '<option value="">Selecciona el área padre</option>' + placedAreas.map(a =>
-                    `<option value="${a.id}" data-color="${a.color}">${this.escapeHtml(a.name)}</option>`
-                ).join('');
-            }
+            const allAreas = DataModel.areas;
+            parentSelect.innerHTML = '<option value="">Sin área padre (asignar al arrastrar)</option>' +
+                allAreas.map(a => `<option value="${a.id}" data-color="${a.color}">${this.escapeHtml(a.name)}</option>`).join('');
             document.getElementById('new-subarea-name').value = '';
             this.updateSubareaColorPreview();
             this.openModal('add-subarea-modal');
@@ -2080,16 +2196,16 @@
         addNewSubarea() {
             const name = document.getElementById('new-subarea-name').value.trim();
             if (!name) { this.showToast('Ingresa un nombre', 'warning'); return; }
-            const parent = document.getElementById('new-subarea-parent').value;
-            if (!parent) { this.showToast('Selecciona el área padre', 'warning'); return; }
-            const area = DataModel.areas.find(a => a.id === parent);
-            DataModel.addSubarea({ name, parent, color: SUBAREA_COLOR, x: null, y: null, placed: area?.placed === true, manualAssigned: true });
+            const parent = document.getElementById('new-subarea-parent').value || null;
+            const area = parent ? DataModel.areas.find(a => a.id === parent) : null;
+            DataModel.addSubarea({ name, parent, color: SUBAREA_COLOR, x: null, y: null, placed: false, manualAssigned: Boolean(parent) });
             this.closeModal('add-subarea-modal');
             this.save();
             this.renderStructureTree();
             if (area?.placed === true) this.canvas.autoLayout(false);
             else this.render();
-            this.showToast(`Subárea "${name}" asociada a "${area ? area.name : 'área'}"`, 'success');
+            const msg = area ? `Subárea "${name}" asociada a "${area.name}"` : `Subárea "${name}" creada`;
+            this.showToast(msg, 'success');
         },
 
         addNewResponsible() {
@@ -2121,6 +2237,157 @@
             if (target?.placed === true) this.canvas.autoLayout(false);
             else this.render();
             this.showToast(`Responsable "${name}" creado`, 'success');
+        },
+
+        // ============================================
+        // AÑADIR / MODIFICAR (FABs)
+        // ============================================
+        showAddNewPicker() {
+            this.openModal('add-new-picker-modal');
+        },
+
+        showAddByName(type) {
+            this.closeModal('add-new-picker-modal');
+            this._addByNameType = type;
+            const labels = { area: 'Nueva Área', subarea: 'Nueva Subárea', responsible: 'Nuevo Responsable', superior: 'Nueva Sección' };
+            document.getElementById('add-by-name-title').textContent = labels[type] || 'Nuevo elemento';
+            document.getElementById('add-by-name-input').value = '';
+            this.openModal('add-by-name-modal');
+            setTimeout(() => document.getElementById('add-by-name-input').focus(), 100);
+        },
+
+        confirmAddByName() {
+            const name = document.getElementById('add-by-name-input').value.trim();
+            if (!name) { this.showToast('Escribe un nombre', 'warning'); return; }
+            const type = this._addByNameType;
+
+            if (type === 'area') {
+                DataModel.addArea({ name, x: null, y: null, placed: false });
+            } else if (type === 'subarea') {
+                DataModel.addSubarea({ name, parent: null, color: SUBAREA_COLOR, x: null, y: null, placed: false });
+            } else if (type === 'responsible') {
+                DataModel.addResponsible({ name, area: null, subarea: null, attachedTo: null, business: '', scope: 'corporativo', x: null, y: null, placed: false });
+            } else if (type === 'superior') {
+                DataModel.addSuperior({ name, color: getNextSectionColor('above'), position: 'above', aboveTarget: 'areas', excludedTargetIds: [], areas: [], x: null, y: null, placed: false });
+            }
+
+            this.closeModal('add-by-name-modal');
+            this.save();
+            this.renderStructureTree();
+            this.render();
+            this.showToast(`"${name}" creado`, 'success');
+        },
+
+        showRenameModal() {
+            const typeEl  = document.getElementById('rename-type');
+            const itemGrp = document.getElementById('rename-item-group');
+            const nameGrp = document.getElementById('rename-name-group');
+            const saveBtn = document.getElementById('rename-save-btn');
+            typeEl.value = '';
+            itemGrp.style.display = 'none';
+            nameGrp.style.display = 'none';
+            saveBtn.style.display = 'none';
+            document.getElementById('rename-new-name').value = '';
+            this.openModal('rename-modal');
+        },
+
+        populateRenameItems() {
+            const type    = document.getElementById('rename-type').value;
+            const itemGrp = document.getElementById('rename-item-group');
+            const nameGrp = document.getElementById('rename-name-group');
+            const saveBtn = document.getElementById('rename-save-btn');
+            const itemSel = document.getElementById('rename-item');
+            const label   = document.getElementById('rename-item-label');
+            document.getElementById('rename-new-name').value = '';
+            nameGrp.style.display = 'none';
+            saveBtn.style.display = 'none';
+
+            if (!type) { itemGrp.style.display = 'none'; return; }
+
+            const typeLabels = { superior: 'Sección', area: 'Área', subarea: 'Subárea', responsible: 'Responsable' };
+            label.textContent = typeLabels[type] || 'Elemento';
+
+            const getCollection = () => {
+                if (type === 'superior')    return DataModel.superiors;
+                if (type === 'area')        return DataModel.areas;
+                if (type === 'subarea')     return DataModel.subareas;
+                if (type === 'responsible') return DataModel.responsibles;
+                return [];
+            };
+
+            const getDisplayName = (el) => {
+                if (type === 'subarea') {
+                    const area = DataModel.areas.find(a => a.id === el.parent);
+                    return area ? `${el.name} (${area.name})` : el.name;
+                }
+                return el.name;
+            };
+
+            itemSel.innerHTML = '<option value="">-- Selecciona --</option>' +
+                getCollection().map(el => `<option value="${el.id}">${this.escapeHtml(getDisplayName(el))}</option>`).join('');
+
+            itemSel.onchange = () => {
+                const found = getCollection().find(e => e.id === itemSel.value);
+                if (found) {
+                    document.getElementById('rename-new-name').value = found.name;
+                    nameGrp.style.display = '';
+                    saveBtn.style.display = '';
+                } else {
+                    nameGrp.style.display = 'none';
+                    saveBtn.style.display = 'none';
+                }
+            };
+
+            itemGrp.style.display = '';
+        },
+
+        saveRename() {
+            const type    = document.getElementById('rename-type').value;
+            const itemId  = document.getElementById('rename-item').value;
+            const newName = document.getElementById('rename-new-name').value.trim();
+
+            if (!type || !itemId || !newName) {
+                this.showToast('Completa todos los campos', 'warning');
+                return;
+            }
+
+            let collection;
+            if (type === 'superior')     collection = DataModel.superiors;
+            else if (type === 'area')    collection = DataModel.areas;
+            else if (type === 'subarea') collection = DataModel.subareas;
+            else if (type === 'responsible') collection = DataModel.responsibles;
+
+            const el = collection.find(e => e.id === itemId);
+            if (!el) { this.showToast('Elemento no encontrado', 'error'); return; }
+
+            const oldName = el.name;
+            if (oldName === newName) { this.closeModal('rename-modal'); return; }
+
+            el.name = newName;
+
+            // Propagate rename to excelRows (both generic and directo-format columns)
+            if (DataModel.excelColumns.length) {
+                const colMap = { area: 'Área', subarea: 'Subárea', responsible: 'Responsable', superior: 'Sección' };
+                const fieldName = colMap[type];
+                if (fieldName) {
+                    const mappings = this.buildMappingsFromColumns(DataModel.excelColumns);
+                    const col = mappings[fieldName] ||
+                        DataModel.excelColumns.find(c => this.normalizeHeader(c) === this.normalizeHeader(fieldName));
+                    if (col) {
+                        DataModel.excelRows.forEach(row => {
+                            if (String(row[col] || '').trim() === oldName) row[col] = newName;
+                        });
+                    }
+                }
+            }
+
+            this.closeModal('rename-modal');
+            this.save();
+            this.renderStructureTree();
+            this.renderDatosView();
+            this.renderMatrizView();
+            this.canvas.render();
+            this.showToast(`"${oldName}" → "${newName}"`, 'success');
         },
 
         // ============================================
