@@ -648,6 +648,9 @@
         .matrix-area-cell {
             border-left: 4px solid #FFFFFF !important;
         }
+        .matrix-subarea-boundary {
+            border-left: 1px solid #CBD5E1 !important;
+        }
         .cell-input {
             width: 100%;
             min-width: 120px;
@@ -2907,7 +2910,7 @@
                             ${subareaColumns.map((col, index) => {
                                 const isAreaStart = index === 0 || subareaColumns[index - 1].area.id !== col.area.id;
                                 if (col.sub) {
-                                    return `<th class="matrix-subarea-header ${isAreaStart ? 'matrix-area-boundary' : ''}">${this.escapeHtml(col.sub.name)}</th>`;
+                                    return `<th class="matrix-subarea-header ${isAreaStart ? 'matrix-area-boundary' : 'matrix-subarea-boundary'}">${this.escapeHtml(col.sub.name)}</th>`;
                                 } else {
                                     return `<th class="matrix-subarea-header matrix-area-boundary" style="color:transparent;">Área</th>`;
                                 }
@@ -2922,7 +2925,7 @@
                             const cellBg = col.sub ? lightenColor(col.area.color, 0.9) : lightenColor(col.area.color, 0.96);
                             const content = uniqueNames.length ? this.renderNamePills(uniqueNames, row.color, 3) : '<span style="color:#A0AEC0;">-</span>';
                             const isAreaStart = index === 0 || subareaColumns[index - 1].area.id !== col.area.id;
-                            return `<td class="${isAreaStart ? 'matrix-area-cell' : ''}" style="min-width:240px;vertical-align:middle;text-align:center;background:${cellBg};padding:1rem;">${content}</td>`;
+                            return `<td class="${isAreaStart ? 'matrix-area-cell' : 'matrix-subarea-boundary'}" style="min-width:240px;vertical-align:middle;text-align:center;background:${cellBg};padding:1rem;">${content}</td>`;
                         }).join(''))).join('')}
                     </tbody>
                 </table>`;
@@ -3239,6 +3242,19 @@
                 const center = this.getPaperCenter();
                 const size = this.getBoxSize(area);
                 area.x = center.x - size.w / 2;
+                area.y = this.getAreaRowY();
+                area.placed = true;
+            },
+
+            placeNewAreaNextToExisting(area) {
+                const placedAreas = DataModel.areas.filter(a => a.id !== area.id && a.placed === true);
+                const size = this.getBoxSize(area);
+                if (!placedAreas.length) {
+                    this.placeAreaAtRowCenter(area);
+                    return;
+                }
+                const rightEdge = Math.max(...placedAreas.map(a => (a.x || 50) + this.getBoxSize(a).w));
+                area.x = rightEdge + 60;
                 area.y = this.getAreaRowY();
                 area.placed = true;
             },
@@ -4283,7 +4299,11 @@
                     return { area, subs, resps, blockW };
                 });
 
-                x = PAD;
+                const totalAreaWidth = areaBlock.reduce((sum, block) => sum + block.blockW, 0) +
+                    Math.max(0, areaBlock.length - 1) * H_GAP_AREA;
+                x = areaBlock.length
+                    ? Math.max(PAD, this.getPaperCenter().x - totalAreaWidth / 2)
+                    : PAD;
                 let maxOrgY = V_RESP + 80;
                 areaBlock.forEach(({ area, subs, resps, blockW }) => {
                     area.x = x + (blockW - AREA_W) / 2;
@@ -4426,9 +4446,13 @@
                     }
                     const size = this.getBoxSize(element);
                     if (!wasPlaced) {
-                        const center = this.getPaperCenter();
-                        element.x = center.x - size.w / 2;
-                        element.y = center.y - size.h / 2;
+                        if (element.type === 'area') {
+                            this.placeNewAreaNextToExisting(element);
+                        } else {
+                            const center = this.getPaperCenter();
+                            element.x = center.x - size.w / 2;
+                            element.y = center.y - size.h / 2;
+                        }
                     } else {
                         element.x = point.x - size.w / 2;
                         element.y = point.y - size.h / 2;
