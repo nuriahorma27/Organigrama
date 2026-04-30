@@ -620,6 +620,9 @@
         }
         .excel-table td { vertical-align: top; }
         .matrix-table { table-layout: auto; width: max-content; min-width: 100%; }
+        .matrix-table th {
+            position: static;
+        }
         .matrix-table th, .matrix-table td {
             white-space: normal;
             overflow-wrap: anywhere;
@@ -792,6 +795,7 @@
         <div class="header">
             <h1>Herramienta Organización Organigramas</h1>
             <div class="header-actions">
+                <button class="btn btn-primary btn-sm" onclick="app.importData()">📥 Importar datos</button>
                 <button class="btn btn-secondary btn-sm" onclick="app.exportData()">📤 Exportar</button>
                 <button class="btn btn-danger btn-sm" onclick="app.clearAll()">🗑️ Limpiar todo</button>
             </div>
@@ -859,7 +863,6 @@
                         <small id="sheet-summary" style="color:var(--color-muted);">Importa un Excel para ver y editar sus columnas aquí.</small>
                     </div>
                     <div class="sheet-actions">
-                        <button class="btn btn-primary btn-sm" onclick="app.importData()">📥 Importar Excel/Numbers</button>
                         <button class="btn btn-success btn-sm" onclick="app.sincronizarAhora();">🔄 Sincronizar</button>
                     </div>
                 </div>
@@ -867,7 +870,7 @@
                     <div id="datos-content" class="empty-state">
                         <div class="empty-state-icon">📄</div>
                         <div class="empty-state-title">Sin Excel cargado</div>
-                        <div class="empty-state-text">Usa Importar Excel/Numbers para cargar un .xlsx, .xls, .numbers, .ods o .csv.</div>
+                        <div class="empty-state-text">Usa Importar datos para cargar un .xlsx, .xls, .numbers, .ods o .csv.</div>
                     </div>
                 </div>
             </div>
@@ -903,7 +906,7 @@
                 <div class="sheet-wrap" style="padding:1.5rem;max-width:900px;">
 
                     <div class="instructions-grid">
-                        <div class="instruction-step"><div class="instruction-icon">1</div><h3>Importa tu Excel</h3><p>Pulsa <b>Importar Excel/Numbers</b> y sube tu archivo. Si tiene las columnas Sección, Área, Subárea, Responsable y Capa, el organigrama se construye automáticamente. Si tiene una pestaña "Negocios", también se cargan los tipos de negocio.</p></div>
+                        <div class="instruction-step"><div class="instruction-icon">1</div><h3>Importa tu Excel</h3><p>Pulsa <b>Importar datos</b> y sube tu archivo. Si tiene las columnas Sección, Área, Subárea, Responsable y Capa, el organigrama se construye automáticamente. Si tiene una pestaña "Negocios", también se cargan los tipos de negocio.</p></div>
                         <div class="instruction-step"><div class="instruction-icon">2</div><h3>Añade elementos</h3><p>Usa el botón <b>+ Añadir nuevo</b> (esquina inferior derecha) para crear áreas, subáreas, responsables o secciones escribiendo solo el nombre. Aparecerán en la lista de la izquierda.</p></div>
                         <div class="instruction-step"><div class="instruction-icon">3</div><h3>Arrastra al lienzo</h3><p>Desde la columna izquierda, arrastra los elementos que quieras al lienzo. Las cajas se colocan donde las sueltes. Usa <b>Auto-layout</b> para ordenarlas automáticamente.</p></div>
                         <div class="instruction-step"><div class="instruction-icon">4</div><h3>Asigna responsables</h3><p>Suelta un responsable encima de un área o subárea ya colocada. Se abrirá un selector para elegir si lidera a nivel Corporativo, Negocio o SGS.</p></div>
@@ -2576,7 +2579,7 @@
                 container.innerHTML = `
                     <div class="empty-state-icon">📄</div>
                     <div class="empty-state-title">Sin Excel cargado</div>
-                    <div class="empty-state-text">Usa Importar Excel/Numbers para cargar un .xlsx, .xls, .numbers, .ods o .csv.</div>`;
+                    <div class="empty-state-text">Usa Importar datos para cargar un .xlsx, .xls, .numbers, .ods o .csv.</div>`;
                 return;
             }
 
