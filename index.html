@@ -1437,6 +1437,10 @@
                         return;
                     }
                     this.loadDatosData(data);
+                    if (this.isOrganigramaDirectoFormat(Object.keys(data[0] || {}))) {
+                        this.importOrganigramaDirecto(data);
+                        return;
+                    }
                     this.showColumnMapping(data);
                     const autoMappings = this.buildMappingsFromColumns(Object.keys(data[0] || {}));
                     if (Object.values(autoMappings).some(Boolean)) {
@@ -2269,6 +2273,123 @@
             this.renderDatosView();
             this.syncFromExcelTable({ silent: true, keepView: true });
             this.renderStructureTree();
+        },
+
+        isOrganigramaDirectoFormat(columns) {
+            const norm = columns.map(c => this.normalizeHeader(c));
+            const hasCapa    = norm.some(n => n === 'capa');
+            const hasSeccion = norm.some(n => n === 'seccion');
+            const hasArea    = norm.some(n => n === 'area');
+            return hasCapa && hasSeccion && hasArea;
+        },
+
+        importOrganigramaDirecto(data) {
+            const headers = Object.keys(data[0] || {});
+            const findCol = (...names) => headers.find(h => names.includes(this.normalizeHeader(h))) || null;
+
+            const seccionCol    = findCol('seccion', 'sección');
+            const areaCol       = findCol('area', 'área');
+            const subareaCol    = findCol('subarea', 'subárea');
+            const responsableCol = findCol('responsable');
+            const capaCol       = findCol('capa');
+
+            const get = (row, col) => col ? String(row[col] || '').trim() : '';
+
+            const scopeMap = { corporativo: 'corporativo', sgs: 'sgs', negocio: 'negocio', negocios: 'negocio' };
+
+            // Clear existing fromExcel data
+            DataModel.superiors   = DataModel.superiors.filter(e => !e.fromExcel);
+            DataModel.areas       = DataModel.areas.filter(e => !e.fromExcel);
+            DataModel.subareas    = DataModel.subareas.filter(e => !e.fromExcel);
+            DataModel.responsibles = DataModel.responsibles.filter(e => !e.fromExcel);
+
+            const sectionColorPalette = ['#003B73', '#4A235A', '#00695C', '#5D4037', '#E8630A'];
+            let sectionColorIdx = 0;
+
+            data.forEach(row => {
+                const seccionName    = get(row, seccionCol);
+                const areaName       = get(row, areaCol);
+                const subareaName    = get(row, subareaCol);
+                const responsableName = get(row, responsableCol);
+                const capaRaw        = get(row, capaCol);
+                const scope          = scopeMap[this.normalizeHeader(capaRaw)] || null;
+
+                // Superior (section)
+                if (seccionName && !DataModel.superiors.find(s => s.name === seccionName)) {
+                    DataModel.addSuperior({
+                        name: seccionName,
+                        color: sectionColorPalette[sectionColorIdx++ % sectionColorPalette.length],
+                        position: 'above',
+                        aboveTarget: 'areas',
+                        excludedTargetIds: [],
+                        areas: [],
+                        x: 50, y: 40,
+                        placed: true,
+                        fromExcel: true
+                    });
+                }
+                const superior = seccionName ? DataModel.superiors.find(s => s.name === seccionName) : null;
+
+                // Area
+                if (areaName && !DataModel.areas.find(a => a.name === areaName)) {
+                    const area = DataModel.addArea({ name: areaName, x: 50, y: 160, placed: true, fromExcel: true });
+                    if (superior) {
+                        if (!superior.areas) superior.areas = [];
+                        superior.areas.push(area.id);
+                    }
+                } else if (areaName && superior) {
+                    const area = DataModel.areas.find(a => a.name === areaName);
+                    if (area && superior.areas && !superior.areas.includes(area.id)) {
+                        superior.areas.push(area.id);
+                    }
+                }
+                const area = areaName ? DataModel.areas.find(a => a.name === areaName) : null;
+
+                // Subarea
+                if (subareaName && area) {
+                    if (!DataModel.subareas.find(s => s.name === subareaName && s.parent === area.id)) {
+                        DataModel.addSubarea({ name: subareaName, parent: area.id, x: 50, y: 280, placed: true, fromExcel: true });
+                    }
+                }
+                const subarea = subareaName && area
+                    ? DataModel.subareas.find(s => s.name === subareaName && s.parent === area.id)
+                    : null;
+
+                // Responsible — skip empty, N/A, or rows without Capa
+                if (!responsableName || responsableName === 'N/A' || !scope) return;
+
+                const target = subarea || area;
+                const alreadyExists = DataModel.responsibles.find(r =>
+                    r.name === responsableName &&
+                    r.area === (area?.id || null) &&
+                    r.subarea === (subarea?.id || null)
+                );
+                if (!alreadyExists) {
+                    DataModel.addResponsible({
+                        name: responsableName,
+                        area: area?.id || null,
+                        subarea: subarea?.id || null,
+                        attachedTo: target?.id || null,
+                        scope,
+                        business: '',
+                        x: 50, y: 420,
+                        placed: true,
+                        fromExcel: true,
+                        manualAssigned: true
+                    });
+                }
+            });
+
+            this.canvas.autoLayout(false);
+            this.save();
+            this.render();
+            this.renderStructureTree();
+            this.switchView('organigrama');
+            this.showToast(
+                `Organigrama creado: ${DataModel.superiors.length} secciones, ${DataModel.areas.length} áreas, ` +
+                `${DataModel.subareas.length} subáreas, ${DataModel.responsibles.length} responsables`,
+                'success'
+            );
         },
 
         buildMappingsFromColumns(columns) {

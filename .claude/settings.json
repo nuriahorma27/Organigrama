@@ -5,7 +5,8 @@
       "Bash(node -e ' *)",
       "Bash(git commit -m ' *)",
       "Bash(awk -F: '$2 > 2780 {print; if \\(NR > 5\\) exit}')",
-      "Bash(awk 'NR>=2690 && NR<=2720 {print NR\": \"$0}' /Users/nuriahormaechea/Documents/GitHub/Organigrama/index.html)"
+      "Bash(awk 'NR>=2690 && NR<=2720 {print NR\": \"$0}' /Users/nuriahormaechea/Documents/GitHub/Organigrama/index.html)",
+      "Bash(python3 -c ' *)"
     ]
   }
 }
