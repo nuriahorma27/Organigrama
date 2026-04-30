@@ -2846,7 +2846,7 @@
                 const items = assignedResponsibles
                     .filter(r => this.getResponsibleScope(r) === row.scope)
                     .filter(r => this.getResponsibleAreaId(r) === area.id)
-                    .filter(r => !r.subarea)
+                    .filter(r => !r.subarea && !(r.attachedTo && DataModel.getElementById(r.attachedTo)?.type === 'subarea'))
                     .filter(r => row.scope !== 'negocio' || (r.business || '') === (row.business || ''))
                     .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
                 const uniqueNames = [...new Set(items.map(r => r.name).filter(Boolean))];
