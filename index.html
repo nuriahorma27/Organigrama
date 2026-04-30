@@ -533,6 +533,64 @@
             font-weight: 600;
         }
         .excel-table td { vertical-align: top; }
+        .matrix-table { table-layout: auto; width: max-content; min-width: 100%; }
+        .matrix-table th, .matrix-table td {
+            white-space: normal;
+            overflow-wrap: anywhere;
+            line-height: 1.25;
+        }
+        .matrix-stub-header {
+            background: var(--color-surface) !important;
+            color: transparent !important;
+            border-bottom: 2px solid var(--color-border);
+        }
+        .matrix-area-header {
+            background: var(--color-primary-dark) !important;
+            color: white !important;
+            text-align: center;
+            vertical-align: middle;
+            font-weight: 900;
+            font-size: 1.08rem;
+            min-width: 250px;
+            padding: 1rem;
+        }
+        .matrix-subarea-header {
+            background: var(--color-primary-light) !important;
+            color: var(--color-primary-dark) !important;
+            text-align: center;
+            vertical-align: middle;
+            font-weight: 800;
+            font-size: 1rem;
+            min-width: 250px;
+            padding: 0.95rem;
+        }
+        .matrix-section-header {
+            text-align: center;
+            vertical-align: middle;
+            font-weight: 900;
+            font-size: 1.02rem;
+            border-bottom: 1px solid var(--color-border);
+        }
+        .matrix-section-spacer {
+            background: var(--color-surface) !important;
+            color: transparent !important;
+            border-bottom: 1px solid var(--color-border);
+        }
+        .matrix-name-pill {
+            display: inline-block;
+            max-width: 100%;
+            margin: 0.15rem 0.2rem 0.15rem 0;
+            padding: 0.45rem 0.65rem;
+            border: 1px solid currentColor;
+            background: #FFFFFF;
+            border-radius: 4px;
+            font-weight: 650;
+            color: #1F2D3D;
+            line-height: 1.25;
+            font-size: 0.95rem;
+            white-space: normal;
+            overflow-wrap: anywhere;
+        }
         .cell-input {
             width: 100%;
             min-width: 120px;
@@ -560,12 +618,29 @@
         /* Legend */
         .canvas-legend {
             display: flex;
-            gap: 1rem;
+            gap: 0.9rem;
             align-items: center;
             flex-wrap: wrap;
+            position: fixed;
+            left: 50%;
+            bottom: 16px;
+            z-index: 20;
+            transform: translateX(-50%);
+            padding: 0.35rem 0.5rem;
+            border: 1px solid var(--color-border);
+            border-radius: 6px;
+            background: var(--color-surface);
+            box-shadow: 0 4px 14px rgba(0, 0, 0, 0.08);
         }
         .legend-item { display: flex; align-items: center; gap: 5px; font-size: 0.78rem; color: var(--color-muted); }
         .legend-swatch { width: 16px; height: 16px; border-radius: 3px; }
+        .legend-swatch.outline { background: white; border: 2px solid var(--color-primary); }
+        .responsables-static-view {
+            flex: 1;
+            overflow-y: auto;
+            padding: 1.5rem;
+            background: var(--color-background);
+        }
 
         /* Color preview in form */
         .color-preview-row { display: flex; align-items: center; gap: 0.75rem; }
@@ -585,11 +660,11 @@
 
         <!-- Navigation Tabs -->
         <div class="nav-tabs">
-            <button class="nav-tab active" onclick="app.switchView('organigrama', event)">Organigrama Visual</button>
-            <button class="nav-tab" onclick="app.switchView('datos', event)">Datos</button>
-            <button class="nav-tab" onclick="app.switchView('responsables', event)">Modelo Tricapa</button>
-            <button class="nav-tab" onclick="app.switchView('matriz', event)">Matriz</button>
+            <button class="nav-tab active" onclick="app.switchView('organigrama', event)">Organización</button>
+            <button class="nav-tab" onclick="app.switchView('matriz', event)">Modelo tricapa</button>
+            <button class="nav-tab" onclick="app.switchView('responsables', event)">Responsables</button>
             <button class="nav-tab" onclick="app.switchView('instrucciones', event)">Instrucciones</button>
+            <button class="nav-tab" onclick="app.switchView('datos', event)">Datos</button>
         </div>
 
         <!-- Main Content -->
@@ -630,6 +705,13 @@
                     <div class="canvas-wrapper" id="canvas-wrapper">
                         <canvas id="canvas"></canvas>
                     </div>
+                    <div class="canvas-legend" aria-label="Leyenda de colores">
+                        <span class="legend-item"><span class="legend-swatch" style="background:#0057A8;"></span>Área</span>
+                        <span class="legend-item"><span class="legend-swatch outline" style="border-color:#0057A8;background:#D9ECFF;"></span>Subárea</span>
+                        <span class="legend-item"><span class="legend-swatch" style="background:#003B73;"></span>Corporativo</span>
+                        <span class="legend-item"><span class="legend-swatch" style="background:#4A90D9;"></span>Negocio</span>
+                        <span class="legend-item"><span class="legend-swatch" style="background:#E8630A;"></span>SGS</span>
+                    </div>
                 </div>
             </div>
 
@@ -662,18 +744,7 @@
 
             <!-- Vista Responsables -->
             <div id="responsables-view" class="content-area">
-                <div class="sidebar">
-                    <div class="sidebar-section">
-                        <div class="sidebar-title">Filtros</div>
-                        <input type="text" class="search-input" placeholder="Buscar responsable o área..." onkeyup="app.filterResponsables(this.value)">
-                        <div id="filter-tags" class="filters"></div>
-                    </div>
-                    <div class="sidebar-section sidebar-fill">
-                        <div class="sidebar-title" style="flex-shrink:0;">Por Área</div>
-                        <div id="area-filters" style="overflow-y:auto;flex:1;min-height:0;"></div>
-                    </div>
-                </div>
-                <div style="flex:1;overflow-y:auto;padding:1.5rem;">
+                <div class="responsables-static-view">
                     <div id="responsables-content"></div>
                 </div>
             </div>
@@ -682,7 +753,7 @@
             <div id="matriz-view" class="content-area stacked-content">
                 <div class="sheet-toolbar">
                     <div>
-                        <div class="sheet-title">Matriz Tricapa</div>
+                        <div class="sheet-title">Modelo tricapa</div>
                         <small style="color:var(--color-muted);">Columnas por área y filas por Corporativo, Negocio y SGS.</small>
                     </div>
                 </div>
@@ -926,6 +997,7 @@
         '#D84315', // Naranja oscuro
     ];
     const AREA_COLOR = '#0057A8';
+    const SUBAREA_COLOR = '#D9ECFF';
     const SECTION_COLORS = {
         above: ['#003B73', '#4A235A', '#00695C', '#5D4037'],
         same: ['#546E7A', '#455A64', '#6D4C41', '#37474F'],
@@ -1168,12 +1240,6 @@
             if (board && board.data) {
                 DataModel.fromJSON(board.data);
                 DataModel.areas.forEach(a => a.color = AREA_COLOR);
-                DataModel.subareas.forEach(s => {
-                    if (s.fromExcel && !s.manualAssigned) {
-                        s.parent = null;
-                        s.color = null;
-                    }
-                });
                 DataModel.responsibles.forEach(r => {
                     if (r.fromExcel && !r.manualAssigned) {
                         Object.assign(r, {
@@ -1226,6 +1292,16 @@
             });
             const lbl = document.getElementById('datos-board-label');
             if (lbl) lbl.textContent = this.boards[this.currentBoard]?.name || this.currentBoard;
+        },
+
+        hasPlacedElements() {
+            return [
+                ...DataModel.superiors,
+                ...DataModel.areas,
+                ...DataModel.subareas,
+                ...DataModel.responsibles,
+                ...DataModel.personas
+            ].some(el => el.placed === true);
         },
 
         init() {
@@ -1839,6 +1915,7 @@
             const idx = DataModel.superiors.length;
             const position = document.getElementById('new-section-position').value || 'above';
             const aboveTarget = document.getElementById('new-section-above-target').value || 'areas';
+            const isFirstBox = !this.hasPlacedElements();
             const targetEls = aboveTarget.startsWith('section:')
                 ? this.getSectionTargetElements({ aboveTarget })
                 : this.getSectionTargetElements({ aboveTarget }).filter(el => el.placed === true);
@@ -1849,7 +1926,7 @@
                 : position === 'below'
                     ? referenceY + 115
                     : referenceY;
-            DataModel.addSuperior({
+            const section = DataModel.addSuperior({
                 name,
                 color,
                 position,
@@ -1859,6 +1936,7 @@
                 y,
                 placed: true
             });
+            if (isFirstBox) this.canvas.placeElementAtPaperCenter(section);
             this.closeModal('add-superior-modal');
             this.save();
             this.render();
@@ -1870,10 +1948,12 @@
             const name = document.getElementById('new-area-name').value.trim();
             if (!name) { this.showToast('Ingresa un nombre', 'warning'); return; }
             const color = document.getElementById('new-area-color').value;
-            const idx = DataModel.areas.length;
-            DataModel.addArea({ name, color, x: idx * 240 + 50, y: 50 });
+            const hasPlacedElements = this.hasPlacedElements();
+            const area = DataModel.addArea({ name, color, x: null, y: null, placed: false });
+            if (!hasPlacedElements) this.canvas.placeElementAtPaperCenter(area);
             this.closeModal('add-area-modal');
             this.save();
+            this.renderStructureTree();
             this.render();
             this.showToast(`Área "${name}" creada`, 'success');
         },
@@ -1884,10 +1964,12 @@
             const parent = document.getElementById('new-subarea-parent').value;
             if (!parent) { this.showToast('Selecciona el área padre', 'warning'); return; }
             const area = DataModel.areas.find(a => a.id === parent);
-            DataModel.addSubarea({ name, parent, color: area ? lightenColor(area.color, 0.55) : null, x: null, y: null, placed: false, manualAssigned: true });
+            DataModel.addSubarea({ name, parent, color: area ? lightenColor(area.color, 0.55) : null, x: null, y: null, placed: area?.placed === true, manualAssigned: true });
             this.closeModal('add-subarea-modal');
             this.save();
-            this.render();
+            this.renderStructureTree();
+            if (area?.placed === true) this.canvas.autoLayout(false);
+            else this.render();
             this.showToast(`Subárea "${name}" asociada a "${area ? area.name : 'área'}"`, 'success');
         },
 
@@ -1899,11 +1981,26 @@
             if (DataModel.responsibles.some(r => r.name === name)) {
                 this.showToast(`"${name}" ya tiene una asignación. Se añadirá también esta.`, 'warning');
             }
-            DataModel.addResponsible({ name, area, subarea, business: '', scope: 'corporativo', x: null, y: null, placed: false, manualAssigned: Boolean(area || subarea) });
+            const target = subarea
+                ? DataModel.subareas.find(s => s.id === subarea)
+                : DataModel.areas.find(a => a.id === area);
+            DataModel.addResponsible({
+                name,
+                area,
+                subarea,
+                attachedTo: target?.id || null,
+                business: '',
+                scope: 'corporativo',
+                x: null,
+                y: null,
+                placed: target?.placed === true,
+                manualAssigned: Boolean(area || subarea)
+            });
             this.closeModal('add-responsible-modal');
             this.save();
             this.renderStructureTree();
-            this.render();
+            if (target?.placed === true) this.canvas.autoLayout(false);
+            else this.render();
             this.showToast(`Responsable "${name}" creado`, 'success');
         },
 
@@ -2137,17 +2234,14 @@
                 }
                 const area = a ? DataModel.areas.find(el => el.name === a) : null;
                 if (s) {
-                    const existingSub = DataModel.subareas.find(el => el.name === s);
-                    if (existingSub && area && existingSub.parent && existingSub.parent !== area.id) {
-                        const oldArea = DataModel.areas.find(el => el.id === existingSub.parent)?.name || 'otra área';
-                        warnings.push(`La subárea "${s}" ya pertenece a "${oldArea}" y no puede estar también en "${a}".`);
-                    } else if (existingSub) {
-                        if (existingSub.fromExcel && !existingSub.manualAssigned) {
-                            existingSub.parent = null;
-                            existingSub.color = null;
-                        }
+                    const existingSub = DataModel.subareas.find(el =>
+                        el.name === s && ((area && el.parent === area.id) || (!area && !el.parent))
+                    );
+                    if (existingSub) {
+                        existingSub.parent = area ? area.id : null;
+                        existingSub.color = area ? SUBAREA_COLOR : existingSub.color;
                     } else {
-                        DataModel.addSubarea({ name: s, parent: null, color: null, x: null, y: null, placed: false, fromExcel: true });
+                        DataModel.addSubarea({ name: s, parent: area ? area.id : null, color: area ? SUBAREA_COLOR : null, x: null, y: null, placed: false, fromExcel: true });
                     }
                 }
                 if (r) {
@@ -2193,11 +2287,7 @@
             // Limpiar conexiones huérfanas
             const allIds = new Set([...DataModel.areas, ...DataModel.subareas, ...DataModel.responsibles, ...DataModel.personas, ...DataModel.superiors].map(e => e.id));
             DataModel.manualConnections = DataModel.manualConnections.filter(c => allIds.has(c.from) && allIds.has(c.to));
-            DataModel.manualConnections = DataModel.manualConnections.filter(c => {
-                const from = DataModel.getElementById(c.from);
-                const to = DataModel.getElementById(c.to);
-                return !(from?.type === 'subarea' && to?.type === 'subarea');
-            });
+            this.sanitizeManualConnections();
 
             DataModel.setExcelData(currentColumns, data);
             this.save();
@@ -2285,6 +2375,21 @@
 
         getResponsibleScopeMeta(scope) {
             return RESPONSIBLE_SCOPE[scope] || RESPONSIBLE_SCOPE.corporativo;
+        },
+
+        isResponsibleAssigned(responsible) {
+            return Boolean(responsible?.area || responsible?.subarea || responsible?.attachedTo);
+        },
+
+        sanitizeManualConnections() {
+            DataModel.manualConnections = DataModel.manualConnections.filter(connection => {
+                const from = DataModel.getElementById(connection.from);
+                const to = DataModel.getElementById(connection.to);
+                if (!from || !to) return false;
+                if (from.type === 'subarea' && to.type === 'subarea') return false;
+                if ((from.type === 'subarea' && to.type === 'area') || (from.type === 'area' && to.type === 'subarea')) return false;
+                return true;
+            });
         },
 
         getBusinessOptions() {
@@ -2385,34 +2490,14 @@
 
         renderResponsablesView() {
             const container = document.getElementById('responsables-content');
-            const allResponsibles = DataModel.responsibles;
-
-            // Filtros por área en sidebar
-            const areaFiltersEl = document.getElementById('area-filters');
-            if (areaFiltersEl) {
-                if (DataModel.areas.length) {
-                    areaFiltersEl.innerHTML = DataModel.areas.map(a => `
-                        <div style="display:flex;align-items:center;gap:6px;margin-bottom:6px;cursor:pointer;padding:4px 6px;border-radius:4px;transition:background 0.15s;"
-                             onmouseenter="this.style.background='var(--color-background)'"
-                             onmouseleave="this.style.background='transparent'"
-                             onclick="app.filterByArea('${a.id}')">
-                            <span style="width:10px;height:10px;border-radius:2px;background:${a.color};flex-shrink:0;"></span>
-                            <span style="font-size:0.82rem;">${a.name}</span>
-                        </div>
-                    `).join('') + `<div style="margin-top:6px;">
-                        <button class="btn btn-secondary btn-sm" style="width:100%;" onclick="app.clearAreaFilter()">Mostrar todas</button>
-                    </div>`;
-                } else {
-                    areaFiltersEl.innerHTML = '<div class="tree-empty">Sin áreas</div>';
-                }
-            }
+            const allResponsibles = DataModel.responsibles.filter(r => this.isResponsibleAssigned(r));
 
             if (!allResponsibles.length) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">👥</div>
-                        <div class="empty-state-title">Sin responsables</div>
-                        <div class="empty-state-text">Importa datos o arrastra responsables sobre áreas del organigrama</div>
+                        <div class="empty-state-title">Sin responsables asignados</div>
+                        <div class="empty-state-text">Asigna responsables a áreas, subáreas o secciones para verlos aquí.</div>
                     </div>`;
                 return;
             }
@@ -2443,7 +2528,7 @@
             let html = '<div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:1.25rem;align-items:start;">';
 
             scopes.forEach(scope => {
-                const scopeResps = allResponsibles.filter(r => r.scope === scope.key);
+                const scopeResps = allResponsibles.filter(r => this.getResponsibleScope(r) === scope.key);
                 html += `
                     <div class="responsible-card">
                         <div class="responsible-header" style="background-color:${scope.color};">
@@ -2562,37 +2647,40 @@
             document.getElementById(modalId)?.remove();
             this.save();
             this.renderStructureTree();
-            this.canvas.render();
+            this.canvas.autoLayout(false);
             this.showToast(`Subárea "${subarea.name}" asignada a "${area ? area.name : 'área'}"`, 'success');
         },
 
         renderMatrizView() {
             const container = document.getElementById('matriz-content');
             if (!container) return;
-            const areas = DataModel.areas;
+            const assignedResponsibles = DataModel.responsibles.filter(r => this.isResponsibleAssigned(r));
+            const assignedAreaIds = new Set(assignedResponsibles.map(r => this.getResponsibleAreaId(r)).filter(Boolean));
+            const areas = DataModel.areas.filter(area =>
+                area.placed === true ||
+                assignedAreaIds.has(area.id) ||
+                DataModel.subareas.some(sub => sub.parent === area.id && sub.placed === true)
+            );
             if (!areas.length) {
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">▦</div>
-                        <div class="empty-state-title">Sin áreas para la matriz</div>
-                        <div class="empty-state-text">Carga datos o crea áreas para ver la matriz tricapa.</div>
+                        <div class="empty-state-title">Sin áreas asignadas en la matriz</div>
+                        <div class="empty-state-text">Arrastra áreas o subáreas a la pizarra y asigna responsables para construir el modelo tricapa.</div>
                     </div>`;
                 return;
             }
 
             const mode = this.matrizViewMode || 'nivel1';
-            const assignedNegocio = DataModel.responsibles.filter(r => this.getResponsibleScope(r) === 'negocio');
-            const businesses = [...new Set([
-                ...this.getBusinessOptions(),
-                ...assignedNegocio.map(r => r.business || '').filter(Boolean)
-            ])].sort((a, b) => a.localeCompare(b, 'es'));
+            const assignedNegocio = assignedResponsibles.filter(r => this.getResponsibleScope(r) === 'negocio');
+            const businesses = this.getBusinessOptions();
             const hasNegocioWithoutBusiness = assignedNegocio.some(r => !r.business);
             const rows = [
                 { level: 'Corporativo', entity: 'Grupo', scope: 'corporativo', color: RESPONSIBLE_SCOPE.corporativo.color, bg: '#EEF3FA' },
                 ...businesses.map(business => ({ level: 'Negocios', entity: business, scope: 'negocio', business, color: RESPONSIBLE_SCOPE.negocio.color, bg: '#EFF7FD' })),
                 { level: 'Factoría', entity: 'SGS', scope: 'sgs', color: RESPONSIBLE_SCOPE.sgs.color, bg: '#FFF4E8' }
             ];
-            if (hasNegocioWithoutBusiness || !businesses.length) {
+            if (assignedNegocio.length && (hasNegocioWithoutBusiness || !businesses.length)) {
                 rows.splice(1, 0, { level: 'Negocios', entity: 'Sin negocio', scope: 'negocio', business: '', color: RESPONSIBLE_SCOPE.negocio.color, bg: '#EFF7FD' });
             }
 
@@ -2606,7 +2694,7 @@
                     ${this.escapeHtml(name)}
                 </div>`;
 
-            const responsiblesFor = (row, area, subarea = null) => DataModel.responsibles
+            const responsiblesFor = (row, area, subarea = null) => assignedResponsibles
                 .filter(r => this.getResponsibleScope(r) === row.scope)
                 .filter(r => this.getResponsibleAreaId(r) === area.id)
                 .filter(r => row.scope !== 'negocio' || (r.business || '') === (row.business || ''))
@@ -2614,7 +2702,7 @@
                 .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
 
             const cellForNivel1 = (row, area) => {
-                const items = DataModel.responsibles
+                const items = assignedResponsibles
                     .filter(r => this.getResponsibleScope(r) === row.scope)
                     .filter(r => this.getResponsibleAreaId(r) === area.id)
                     .filter(r => row.scope !== 'negocio' || (r.business || '') === (row.business || ''))
@@ -2629,8 +2717,8 @@
                 renderLevelCells.seen[row.level] = true;
                 return `
                     <tr style="border-top:${showLevel ? `3px solid ${row.color}` : '1px dashed var(--color-border)'};">
-                        ${showLevel ? `<td rowspan="${levelCounts[row.level]}" style="min-width:130px;text-align:center;vertical-align:middle;background:${row.color};color:white;font-weight:800;font-size:1rem;">${this.escapeHtml(row.level)}</td>` : ''}
-                        <td style="min-width:150px;background:${row.bg};color:${row.color};font-weight:800;font-size:0.95rem;text-align:left;padding-left:1rem;">${this.escapeHtml(row.entity)}</td>
+                        ${showLevel ? `<td rowspan="${levelCounts[row.level]}" style="min-width:190px;text-align:center;vertical-align:middle;background:${row.color};color:white;font-weight:900;font-size:1.28rem;line-height:1.15;padding:1.2rem;">${this.escapeHtml(row.level)}</td>` : ''}
+                        <td style="min-width:220px;background:${row.bg};color:${row.color};font-weight:900;font-size:1.15rem;text-align:left;padding:1rem 1.25rem;">${this.escapeHtml(row.entity)}</td>
                         ${cellsHtml}
                     </tr>`;
             };
@@ -2639,24 +2727,23 @@
             const controls = `
                 <div style="padding:0.75rem;display:flex;align-items:center;gap:0.75rem;border-bottom:1px solid var(--color-border);background:var(--color-surface);">
                     <div class="segmented-control">
-                        <button class="${mode === 'nivel1' ? 'active' : ''}" onclick="app.setMatrizViewMode('nivel1')">Nivel 1</button>
-                        <button class="${mode === 'nivel2' ? 'active' : ''}" onclick="app.setMatrizViewMode('nivel2')">Nivel 2</button>
+                        <button class="${mode === 'nivel1' ? 'active' : ''}" onclick="app.setMatrizViewMode('nivel1')">Áreas</button>
+                        <button class="${mode === 'nivel2' ? 'active' : ''}" onclick="app.setMatrizViewMode('nivel2')">Áreas y subáreas</button>
                     </div>
                     <small style="color:var(--color-muted);">${mode === 'nivel1' ? 'Vista por áreas' : 'Vista por áreas y subáreas'}</small>
                 </div>`;
 
             if (mode === 'nivel1') {
                 container.innerHTML = controls + `
-                <table class="excel-table" style="min-width:${Math.max(1000, 260 + areas.length * 190)}px;">
+                <table class="excel-table matrix-table" style="min-width:${Math.max(1000, 350 + areas.length * 260)}px;">
                     <thead>
                         <tr>
-                            <th>Nivel</th>
-                            <th>Grupo / Negocio / SGS</th>
-                            ${areas.map(a => `<th>${this.escapeHtml(a.name)}</th>`).join('')}
+                            <th colspan="2" class="matrix-stub-header"></th>
+                            ${areas.map(a => `<th class="matrix-area-header">${this.escapeHtml(a.name)}</th>`).join('')}
                         </tr>
                     </thead>
                     <tbody>
-                        ${rows.map(row => renderLevelCells(row, areas.map(area => `<td style="min-width:180px;vertical-align:middle;text-align:center;background:${row.bg};">${cellForNivel1(row, area)}</td>`).join(''))).join('')}
+                        ${rows.map(row => renderLevelCells(row, areas.map(area => `<td style="min-width:240px;vertical-align:middle;text-align:center;background:${row.bg};padding:1rem;">${cellForNivel1(row, area)}</td>`).join(''))).join('')}
                     </tbody>
                 </table>`;
                 return;
@@ -2664,7 +2751,7 @@
 
             const subareaColumns = areas.flatMap(area => [
                 { area, sub: null },
-                ...DataModel.subareas.filter(s => s.parent === area.id).map(sub => ({ area, sub }))
+                ...DataModel.subareas.filter(s => s.parent === area.id && s.placed === true).map(sub => ({ area, sub }))
             ]);
             renderLevelCells.seen = {};
             
@@ -2683,11 +2770,10 @@
             const headerRows = hasAnySuperior ? 3 : 2;
             
             container.innerHTML = controls + `
-                <table class="excel-table" style="min-width:${Math.max(1100, 260 + subareaColumns.length * 160)}px;">
+                <table class="excel-table matrix-table" style="min-width:${Math.max(1100, 350 + subareaColumns.length * 260)}px;">
                     <thead>
                         ${hasAnySuperior ? `<tr>
-                            <th rowspan="${headerRows}">Nivel</th>
-                            <th rowspan="${headerRows}">Grupo / Negocio / SGS</th>
+                            <th rowspan="${headerRows}" colspan="2" class="matrix-stub-header"></th>
                             ${DataModel.superiors.map(superior => {
                                 const areaCount = superior.areas ? superior.areas.filter(aId => areas.some(a => a.id === aId)).length : 0;
                                 if (areaCount === 0) return '';
@@ -2695,37 +2781,33 @@
                                     .filter(aId => areas.some(a => a.id === aId))
                                     .reduce((sum, aId) => {
                                         const area = areas.find(a => a.id === aId);
-                                        const sCount = DataModel.subareas.filter(s => s.parent === area.id).length;
+                                        const sCount = DataModel.subareas.filter(s => s.parent === area.id && s.placed === true).length;
                                         return sum + (sCount > 0 ? sCount : 1);
                                     }, 0);
                                 const superiorBg = lightenColor(superior.color, 0.95);
-                                return `<th colspan="${totalCols}" style="text-align:center;background:${superiorBg};color:${superior.color};font-weight:900;font-size:0.98rem;">${this.escapeHtml(superior.name)}</th>`;
+                                return `<th colspan="${totalCols}" class="matrix-section-header" style="background:${superiorBg};color:${superior.color};">${this.escapeHtml(superior.name)}</th>`;
                             }).join('')}
                             ${areas.length > 0 && !areas.every(a => DataModel.superiors.some(s => s.areas && s.areas.includes(a.id))) ? (() => {
                                 const unassignedAreas = areas.filter(a => !DataModel.superiors.some(s => s.areas && s.areas.includes(a.id)));
                                 const totalCols = unassignedAreas.reduce((sum, area) => {
-                                    const sCount = DataModel.subareas.filter(s => s.parent === area.id).length;
+                                    const sCount = DataModel.subareas.filter(s => s.parent === area.id && s.placed === true).length;
                                     return sum + (sCount > 0 ? sCount : 1);
                                 }, 0);
-                                return `<th colspan="${totalCols}" style="text-align:center;background:#F5F5F5;color:#888;font-weight:900;font-size:0.98rem;">Sin Sección</th>`;
+                                return `<th colspan="${totalCols}" class="matrix-section-spacer"></th>`;
                             })() : ''}
                         </tr>` : ''}
                         <tr>
-                            <th rowspan="${hasAnySuperior ? 1 : 2}">Nivel</th>
-                            <th rowspan="${hasAnySuperior ? 1 : 2}">Grupo / Negocio / SGS</th>
+                            ${!hasAnySuperior ? `<th rowspan="2" colspan="2" class="matrix-stub-header"></th>` : ''}
                             ${areas.map(area => {
-                                const subareaCount = DataModel.subareas.filter(s => s.parent === area.id).length;
+                                const subareaCount = DataModel.subareas.filter(s => s.parent === area.id && s.placed === true).length;
                                 const count = subareaCount > 0 ? subareaCount : 1;
-                                const areaBg = lightenColor(area.color, 0.92);
-                                return `<th colspan="${count}" style="text-align:center;background:${areaBg};color:${area.color};font-weight:800;font-size:0.95rem;">${this.escapeHtml(area.name)}</th>`;
+                                return `<th colspan="${count}" class="matrix-area-header">${this.escapeHtml(area.name)}</th>`;
                             }).join('')}
                         </tr>
                         <tr>
                             ${subareaColumns.map(col => {
                                 if (col.sub) {
-                                    const subareaBg = lightenColor(col.area.color, 0.85);
-                                    const subareaColor = darkenColor(col.area.color, 0.15);
-                                    return `<th style="min-width:160px;text-align:center;background:${subareaBg};color:${subareaColor};font-weight:700;font-size:0.9rem;">${this.escapeHtml(col.sub.name)}</th>`;
+                                    return `<th class="matrix-subarea-header">${this.escapeHtml(col.sub.name)}</th>`;
                                 } else {
                                     return '';
                                 }
@@ -2739,28 +2821,17 @@
                             const uniqueNames = [...new Set(directItems.map(r => r.name).filter(Boolean))];
                             const cellBg = col.sub ? lightenColor(col.area.color, 0.9) : lightenColor(col.area.color, 0.96);
                             const content = uniqueNames.length ? this.renderNamePills(uniqueNames, row.color, 3) : '<span style="color:#A0AEC0;">-</span>';
-                            return `<td style="min-width:160px;vertical-align:middle;text-align:center;background:${cellBg};padding:0.75rem;">${content}</td>`;
+                            return `<td style="min-width:240px;vertical-align:middle;text-align:center;background:${cellBg};padding:1rem;">${content}</td>`;
                         }).join(''))).join('')}
                     </tbody>
                 </table>`;
         },
 
         renderNamePills(names, color, maxVisible = 3) {
-            if (names.length <= maxVisible) {
-                return names.map(name => `
-                    <div style="display:inline-block;margin:0.15rem 0.2rem 0.15rem 0;padding:0.35rem 0.55rem;border:1px solid ${color};background:#FFFFFF;border-radius:4px;font-weight:600;color:#1F2D3D;line-height:1.2;">
-                        ${this.escapeHtml(name)}
-                    </div>`).join('');
-            }
-            const visible = names.slice(0, maxVisible);
-            const hidden = names.length - maxVisible;
-            return visible.map(name => `
-                <div style="display:inline-block;margin:0.15rem 0.2rem 0.15rem 0;padding:0.35rem 0.55rem;border:1px solid ${color};background:#FFFFFF;border-radius:4px;font-weight:600;color:#1F2D3D;line-height:1.2;">
+            return names.map(name => `
+                <div class="matrix-name-pill" style="border-color:${color};">
                     ${this.escapeHtml(name)}
-                </div>`).join('') + `
-                <div style="display:inline-block;margin:0.15rem 0.2rem 0.15rem 0;padding:0.35rem 0.55rem;border:2px solid ${color};background:#FFFFFF;border-radius:4px;font-weight:700;color:${color};line-height:1.2;cursor:default;">
-                    +${hidden}
-                </div>`;
+                </div>`).join('');
         },
 
         // ============================================
@@ -2896,7 +2967,7 @@
                 attachedTo: target.id,
                 scope,
                 business,
-                placed: false,
+                placed: target.placed === true,
                 x: null,
                 y: null,
                 area: null,
@@ -2934,7 +3005,8 @@
             this.pendingResponsibleAssignment = null;
             this.closeModal('responsible-scope-modal');
             this.renderStructureTree();
-            this.render();
+            if (target.placed === true) this.canvas.autoLayout(false);
+            else this.render();
             if (!alreadyAssignedElsewhere) this.showToast('Responsable asignado', 'success');
         },
 
@@ -3017,6 +3089,7 @@
             connectionStyle: 'solid',
             connectionStart: null,
             connectionDrag: null,   // { fromId, fromX, fromY, toX, toY }
+            suppressNextClick: false,
             exporting: false,
             expandedAssignmentLabels: {},
             assignmentLabelHitBoxes: [],
@@ -3035,11 +3108,26 @@
 
             setupCanvas() {
                 const wrapper = document.getElementById('canvas-wrapper');
-                this.el.width = Math.max(wrapper.clientWidth * 3, 2400);
-                this.el.height = Math.max(wrapper.clientHeight * 3, 1800);
-                this.offsetX = Math.round(wrapper.clientWidth * 0.35);
-                this.offsetY = Math.round(wrapper.clientHeight * 0.45);
+                this.el.width = Math.max(wrapper.clientWidth, 900);
+                this.el.height = Math.max(wrapper.clientHeight, 620);
+                this.offsetX = 0;
+                this.offsetY = 0;
                 this.scale = 1;
+            },
+
+            getPaperCenter() {
+                return {
+                    x: (this.el.width / 2 - this.offsetX) / this.scale,
+                    y: (this.el.height / 2 - this.offsetY) / this.scale
+                };
+            },
+
+            placeElementAtPaperCenter(element) {
+                const center = this.getPaperCenter();
+                const size = this.getBoxSize(element);
+                element.x = center.x - size.w / 2;
+                element.y = center.y - size.h / 2;
+                element.placed = true;
             },
 
             attachEvents() {
@@ -3078,6 +3166,10 @@
                 });
 
                 wrapper.addEventListener('click', (e) => {
+                    if (this.suppressNextClick) {
+                        this.suppressNextClick = false;
+                        return;
+                    }
                     if (this.connectionDrag) return;
                     const point = this.toWorld(e);
                     const labelHit = this.hitTestAssignmentLabel(point.x, point.y);
@@ -3146,18 +3238,13 @@
                         const target = targetHandle ? targetHandle.el : this.hitTest(point.x, point.y, this.connectionDrag.fromId);
                         if (target) {
                             const from = DataModel.getElementById(this.connectionDrag.fromId);
-                            if (this.canCreateManualConnection(from, target)) {
-                                DataModel.addManualConnection({
-                                    from: this.connectionDrag.fromId,
-                                    to: target.id,
-                                    fromAnchor: this.connectionDrag.fromAnchor || 'bottom',
-                                    toAnchor: targetHandle ? targetHandle.pos : this.getBestAnchor(target, point.x, point.y),
-                                    style: this.connectionStyle
-                                });
-                                app.save();
-                                app.showToast('Línea añadida', 'success');
-                            }
+                            this.createManualConnection(from, target, {
+                                fromAnchor: this.connectionDrag.fromAnchor || 'bottom',
+                                toAnchor: targetHandle ? targetHandle.pos : this.getBestAnchor(target, point.x, point.y),
+                                style: this.connectionStyle
+                            });
                         }
+                        this.suppressNextClick = true;
                         this.connectionDrag = null;
                         this.render();
                         return;
@@ -3242,19 +3329,15 @@
                 }
                 const from = DataModel.getElementById(this.connectionStart);
                 if (!this.canCreateManualConnection(from, hit)) return;
-                DataModel.addManualConnection({
-                    from: this.connectionStart,
-                    to: hit.id,
-                    style: this.connectionStyle
-                });
-                app.save();
-                this.cancelConnectionMode();
-                this.render();
-                app.showToast('Línea añadida', 'success');
+                if (this.createManualConnection(from, hit, { style: this.connectionStyle })) {
+                    this.cancelConnectionMode();
+                    this.render();
+                }
             },
 
             canCreateManualConnection(from, to) {
                 if (!from || !to) return false;
+                if (from.id === to.id) return false;
                 if (from.type === 'subarea' && to.type === 'subarea') {
                     app.showToast('No se pueden asociar dos subáreas entre sí. Asócialas a un nivel superior o inferior.', 'warning');
                     this.cancelConnectionMode();
@@ -3262,6 +3345,61 @@
                     this.render();
                     return false;
                 }
+                const subarea = from.type === 'subarea' ? from : to.type === 'subarea' ? to : null;
+                const area = from.type === 'area' ? from : to.type === 'area' ? to : null;
+                if (subarea && area && subarea.parent && subarea.parent !== area.id) {
+                    const currentArea = DataModel.areas.find(a => a.id === subarea.parent);
+                    app.showToast(`"${subarea.name}" ya pertenece a "${currentArea?.name || 'otra área'}". No puede asociarse a varias áreas.`, 'warning');
+                    this.cancelConnectionMode();
+                    this.connectionDrag = null;
+                    this.render();
+                    return false;
+                }
+                return true;
+            },
+
+            createManualConnection(from, to, options = {}) {
+                if (!this.canCreateManualConnection(from, to)) return false;
+                const subarea = from.type === 'subarea' ? from : to.type === 'subarea' ? to : null;
+                const area = from.type === 'area' ? from : to.type === 'area' ? to : null;
+                if (subarea && area) {
+                    subarea.parent = area.id;
+                    subarea.color = lightenColor(area.color, 0.55);
+                    subarea.manualAssigned = true;
+                    DataModel.manualConnections = DataModel.manualConnections.filter(connection => {
+                        const a = DataModel.getElementById(connection.from);
+                        const b = DataModel.getElementById(connection.to);
+                        return !((a?.type === 'subarea' && a.id === subarea.id && b?.type === 'area') ||
+                                 (b?.type === 'subarea' && b.id === subarea.id && a?.type === 'area'));
+                    });
+                    app.save();
+                    app.renderStructureTree();
+                    this.autoLayout(false);
+                    app.showToast(`Subárea "${subarea.name}" asociada a "${area.name}"`, 'success');
+                    return true;
+                }
+                const duplicate = DataModel.manualConnections.some(connection =>
+                    ((connection.from === from.id && connection.to === to.id) || (connection.from === to.id && connection.to === from.id)) &&
+                    (connection.fromAnchor || '') === (options.fromAnchor || '') &&
+                    (connection.toAnchor || '') === (options.toAnchor || '')
+                );
+                if (duplicate) {
+                    app.showToast('Esa línea ya existe', 'warning');
+                    return false;
+                }
+                const fromSize = this.getBoxSize(from);
+                const toSize = this.getBoxSize(to);
+                const fromCenter = { x: (from.x || 50) + fromSize.w / 2, y: (from.y || 50) + fromSize.h / 2 };
+                const toCenter = { x: (to.x || 50) + toSize.w / 2, y: (to.y || 50) + toSize.h / 2 };
+                DataModel.addManualConnection({
+                    from: from.id,
+                    to: to.id,
+                    fromAnchor: options.fromAnchor || this.getBestAnchor(from, toCenter.x, toCenter.y),
+                    toAnchor: options.toAnchor || this.getBestAnchor(to, fromCenter.x, fromCenter.y),
+                    style: options.style || this.connectionStyle
+                });
+                app.save();
+                app.showToast('Línea añadida', 'success');
                 return true;
             },
 
@@ -3427,7 +3565,7 @@
                     const subs = DataModel.subareas
                         .filter(sub => sub.parent === parent.id && sub.placed === true)
                         .sort((a, b) => (a.y || 0) - (b.y || 0));
-                    this.drawSharedLevelConnections(parent, subs, parent.color || '#0057A8', { alpha: 0.45, fromAnchor: 'bottom', toAnchor: 'top' });
+                    this.drawBracketConnections(parent, subs, parent.color || '#0057A8', { alpha: 0.48 });
                 });
 
                 // Responsable → Área o Subárea
@@ -3499,6 +3637,33 @@
                 if (options.makeConnection) {
                     targets.forEach(target => this.drawConnectionDeleteMarker(source, target, options.makeConnection(target)));
                 }
+            },
+
+            drawBracketConnections(source, targets, color, options = {}) {
+                if (!targets.length) return;
+                const ctx = this.ctx;
+                const start = this.getAnchorPoint(source, 'bottom');
+                const targetPoints = targets.map(target => this.getAnchorPoint(target, 'left'));
+                const busX = Math.min(start.x - 42, ...targetPoints.map(point => point.x - 24));
+                const firstY = Math.min(...targetPoints.map(point => point.y));
+                const lastY = Math.max(...targetPoints.map(point => point.y));
+                const entryY = Math.min(firstY - 24, start.y + 36);
+                ctx.save();
+                ctx.globalAlpha = options.alpha ?? 0.45;
+                ctx.strokeStyle = color;
+                ctx.lineWidth = 2;
+                ctx.setLineDash([]);
+                ctx.beginPath();
+                ctx.moveTo(start.x, start.y);
+                ctx.lineTo(start.x, entryY);
+                ctx.lineTo(busX, entryY);
+                ctx.lineTo(busX, lastY);
+                targetPoints.forEach(point => {
+                    ctx.moveTo(busX, point.y);
+                    ctx.lineTo(point.x, point.y);
+                });
+                ctx.stroke();
+                ctx.restore();
             },
 
             getOrthogonalPath(from, to, connection = {}) {
@@ -3971,8 +4136,8 @@
                 const V_AREA     = 160;
                 const V_SUB      = 280;
                 const V_RESP     = 420;
-                const V_SUP_LOW  = 560;
-                const V_PERSON   = 680;
+                let V_SUP_LOW    = 560;
+                let V_PERSON     = 680;
 
                 // Solo trabaja con los elementos YA colocados en la pizarra
                 const onCanvas = el => el.placed === true;
@@ -3990,35 +4155,45 @@
                 const areaBlock = DataModel.areas.filter(onCanvas).map(area => {
                     const subs  = DataModel.subareas.filter(s => onCanvas(s) && s.parent === area.id);
                     const resps = DataModel.responsibles.filter(r => onCanvas(r) && r.area === area.id && !r.subarea);
-                    const subsWidth  = subs.length  ? subs.length  * SUB_W  + (subs.length  - 1) * H_GAP_SUB  : 0;
+                    const subRespWidths = subs.map(sub => {
+                        const subResps = DataModel.responsibles.filter(r => onCanvas(r) && r.subarea === sub.id);
+                        return subResps.length ? subResps.length * RESP_W + (subResps.length - 1) * H_GAP_RESP : SUB_W;
+                    });
+                    const subsWidth  = subRespWidths.length ? Math.max(...subRespWidths, SUB_W) : 0;
                     const respsWidth = resps.length ? resps.length * RESP_W + (resps.length - 1) * H_GAP_RESP : 0;
                     const blockW = Math.max(AREA_W, subsWidth, respsWidth);
                     return { area, subs, resps, blockW };
                 });
 
                 x = PAD;
+                let maxOrgY = V_RESP + 80;
                 areaBlock.forEach(({ area, subs, resps, blockW }) => {
                     area.x = x + (blockW - AREA_W) / 2;
                     area.y = V_AREA;
 
-                    const subsTotal = subs.length * SUB_W + (subs.length - 1) * H_GAP_SUB;
-                    let sx = x + (blockW - subsTotal) / 2;
+                    let sy = V_SUB;
                     subs.forEach(sub => {
-                        sub.x = sx; sub.y = V_SUB;
-                        sx += SUB_W + H_GAP_SUB;
+                        sub.x = x + (blockW - SUB_W) / 2;
+                        sub.y = sy;
 
                         const subResps = DataModel.responsibles.filter(r => onCanvas(r) && r.subarea === sub.id);
+                        const subRespTotal = subResps.length * RESP_W + Math.max(0, subResps.length - 1) * H_GAP_RESP;
+                        let srx = x + (blockW - subRespTotal) / 2;
                         subResps.forEach((r, i) => {
-                            r.x = sub.x + i * (RESP_W + H_GAP_RESP);
-                            r.y = V_RESP;
+                            r.x = srx + i * (RESP_W + H_GAP_RESP);
+                            r.y = sub.y + 90;
                         });
+                        sy += subResps.length ? 170 : 80;
+                        maxOrgY = Math.max(maxOrgY, sy, ...subResps.map(r => (r.y || 0) + 80));
                     });
 
                     const respsTotal = resps.length * RESP_W + (resps.length - 1) * H_GAP_RESP;
                     let rx = x + (blockW - respsTotal) / 2;
                     resps.forEach(r => {
-                        r.x = rx; r.y = V_RESP;
+                        r.x = rx;
+                        r.y = subs.length ? Math.max(V_RESP, sy + 20) : V_RESP;
                         rx += RESP_W + H_GAP_RESP;
+                        maxOrgY = Math.max(maxOrgY, r.y + 80);
                     });
 
                     x += blockW + H_GAP_AREA;
@@ -4031,7 +4206,11 @@
                     .forEach(r => {
                         r.x = rx; r.y = V_RESP;
                         rx += RESP_W + H_GAP_RESP;
+                        maxOrgY = Math.max(maxOrgY, r.y + 80);
                     });
+
+                V_SUP_LOW = Math.max(V_SUP_LOW, maxOrgY + 80);
+                V_PERSON = V_SUP_LOW + 120;
 
                 // ── Secciones "debajo" ──────────────────────────────
                 x = PAD;
@@ -4068,23 +4247,30 @@
             zoomOut() { this.zoomAt(this.el.width / 2, this.el.height / 2, 0.8); },
 
             centerCanvas() {
-                const wrapper = document.getElementById('canvas-wrapper');
-                this.offsetX = Math.round(wrapper.clientWidth * 0.35);
-                this.offsetY = Math.round(wrapper.clientHeight * 0.45);
+                this.offsetX = 0;
+                this.offsetY = 0;
+                this.scale = 1;
                 this.render();
             },
 
             fitToView() {
-                const all = [...DataModel.superiors, ...DataModel.areas, ...DataModel.subareas, ...DataModel.responsibles, ...DataModel.personas];
+                const all = [...DataModel.superiors, ...DataModel.areas, ...DataModel.subareas, ...DataModel.responsibles, ...DataModel.personas]
+                    .filter(e => e.placed === true);
                 if (!all.length) return;
                 const minX = Math.min(...all.map(e => e.x || 0));
-                const maxX = Math.max(...all.map(e => (e.x || 0) + 220));
+                const maxX = Math.max(...all.map(e => {
+                    const size = this.getBoxSize(e);
+                    return (e.x || 0) + size.w;
+                }));
                 const minY = Math.min(...all.map(e => e.y || 0));
-                const maxY = Math.max(...all.map(e => (e.y || 0) + 100));
+                const maxY = Math.max(...all.map(e => {
+                    const size = this.getBoxSize(e);
+                    return (e.y || 0) + size.h;
+                }));
                 const pad = 60;
                 const w = maxX - minX + pad * 2;
                 const h = maxY - minY + pad * 2;
-                this.scale = Math.min(this.el.width / w, this.el.height / h, 1.5);
+                this.scale = Math.min(this.el.width / w, this.el.height / h, 1);
                 this.offsetX = (this.el.width - w * this.scale) / 2 - minX * this.scale + pad;
                 this.offsetY = (this.el.height - h * this.scale) / 2 - minY * this.scale + pad;
                 this.render();
@@ -4161,18 +4347,8 @@
             }
             this.initBoards();
             this.loadBoardState(this.currentBoard);
-            DataModel.manualConnections = DataModel.manualConnections.filter(c => {
-                const from = DataModel.getElementById(c.from);
-                const to = DataModel.getElementById(c.to);
-                return !(from?.type === 'subarea' && to?.type === 'subarea');
-            });
+            this.sanitizeManualConnections();
             DataModel.areas.forEach(a => a.color = AREA_COLOR);
-            DataModel.subareas.forEach(s => {
-                if (s.fromExcel && !s.manualAssigned) {
-                    s.parent = null;
-                    s.color = null;
-                }
-            });
             DataModel.responsibles.forEach(r => {
                 if (r.fromExcel && !r.manualAssigned) {
                     Object.assign(r, {
