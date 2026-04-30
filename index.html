@@ -740,12 +740,6 @@
 
                 <div class="canvas-area">
                     <div class="canvas-toolbar">
-                        <!-- Board selector -->
-                        <div style="display:flex;border:1px solid var(--color-border);border-radius:6px;overflow:hidden;margin-right:0.5rem;">
-                            <button id="board-btn-p1" class="btn btn-primary btn-sm" style="border-radius:0;border:none;" onclick="app.switchBoard('p1')">P1</button>
-                            <button id="board-btn-p2" class="btn btn-secondary btn-sm" style="border-radius:0;border:none;border-left:1px solid var(--color-border);" onclick="app.switchBoard('p2')">P2</button>
-                            <button id="board-btn-p3" class="btn btn-secondary btn-sm" style="border-radius:0;border:none;border-left:1px solid var(--color-border);" onclick="app.switchBoard('p3')">P3</button>
-                        </div>
                         <button class="btn btn-secondary btn-sm" onclick="app.showAddSectionWizard()">➕ Añadir sección</button>
                         <div class="toolbar-group" aria-label="Zoom">
                             <button class="toolbar-button" onclick="app.canvas.zoomOut()" title="Alejar">−</button>
@@ -779,16 +773,10 @@
             <div id="datos-view" class="content-area stacked-content">
                 <div class="sheet-toolbar">
                     <div>
-                        <div class="sheet-title">Datos importados — <span id="datos-board-label" style="color:var(--color-primary);">P1</span></div>
+                        <div class="sheet-title">Datos importados</div>
                         <small id="sheet-summary" style="color:var(--color-muted);">Importa un Excel para ver y editar sus columnas aquí.</small>
                     </div>
                     <div class="sheet-actions">
-                        <!-- Board selector en datos -->
-                        <div style="display:flex;border:1px solid var(--color-border);border-radius:6px;overflow:hidden;">
-                            <button id="datos-board-btn-p1" class="btn btn-primary btn-sm" style="border-radius:0;border:none;" onclick="app.switchBoard('p1')">P1</button>
-                            <button id="datos-board-btn-p2" class="btn btn-secondary btn-sm" style="border-radius:0;border:none;border-left:1px solid var(--color-border);" onclick="app.switchBoard('p2')">P2</button>
-                            <button id="datos-board-btn-p3" class="btn btn-secondary btn-sm" style="border-radius:0;border:none;border-left:1px solid var(--color-border);" onclick="app.switchBoard('p3')">P3</button>
-                        </div>
                         <button class="btn btn-primary btn-sm" onclick="app.importData()">📥 Importar Excel/Numbers</button>
                         <button class="btn btn-success btn-sm" onclick="app.sincronizarAhora();">🔄 Sincronizar</button>
                     </div>
@@ -833,7 +821,7 @@
                 <div class="sheet-wrap" style="padding:1.5rem;">
                     <div class="instructions-grid">
                         <div class="instruction-step"><div class="instruction-icon">1</div><h3>Carga o edita datos</h3><p>Importa un archivo o trabaja directamente en Datos. Las columnas clave son Área, Subárea, Responsable y Negocio.</p></div>
-                        <div class="instruction-step"><div class="instruction-icon">2</div><h3>Elige proyecto</h3><p>Usa P1, P2 o P3 para mantener tres organigramas independientes con sus propios datos y dibujo.</p></div>
+                        <div class="instruction-step"><div class="instruction-icon">2</div><h3>Organiza los datos</h3><p>Revisa y edita las columnas importadas desde la pestaña Datos antes de construir el lienzo.</p></div>
                         <div class="instruction-step"><div class="instruction-icon">3</div><h3>Construye el lienzo</h3><p>Arrastra áreas, subáreas, responsables y secciones desde la izquierda. Las cajas se colocan donde las sueltes.</p></div>
                         <div class="instruction-step"><div class="instruction-icon">4</div><h3>Añade secciones</h3><p>Pulsa Añadir sección, escribe el nombre y elige por encima de qué nivel debe ir: áreas, subáreas o una sección existente.</p></div>
                         <div class="instruction-step"><div class="instruction-icon">5</div><h3>Conecta cajas</h3><p>Usa los puntos azules de arriba, abajo y laterales para sacar líneas desde el borde más claro y evitar cruces por el centro.</p></div>
@@ -1623,7 +1611,15 @@
             canvasObj.scale = prev.scale;
             canvasObj.exporting = prev.exporting;
             canvasObj.render();
-            return exp;
+            // Composite sobre fondo blanco para exportaciones JPG/PDF
+            const white = document.createElement('canvas');
+            white.width = exp.width;
+            white.height = exp.height;
+            const wCtx = white.getContext('2d');
+            wCtx.fillStyle = '#FFFFFF';
+            wCtx.fillRect(0, 0, white.width, white.height);
+            wCtx.drawImage(exp, 0, 0);
+            return white;
         },
 
         exportImages() {
@@ -1666,6 +1662,7 @@
         },
 
         exportPDFWithMatrix() {
+            this.renderMatrizView();
             const { jsPDF } = window.jspdf;
             const exp = this.buildExportCanvas();
             const imgData = exp.toDataURL('image/png');
@@ -2865,10 +2862,10 @@
             };
 
             const controls = `
-                <div style="padding:0.75rem;display:flex;align-items:center;gap:0.75rem;border-bottom:1px solid var(--color-border);background:var(--color-surface);">
+                <div style="position:sticky;top:0;z-index:10;padding:0.75rem;display:flex;align-items:center;gap:0.75rem;border-bottom:1px solid var(--color-border);background:var(--color-surface);">
                     <div class="segmented-control">
-                        <button class="${mode === 'nivel1' ? 'active' : ''}" onclick="app.setMatrizViewMode('nivel1')">Áreas</button>
-                        <button class="${mode === 'nivel2' ? 'active' : ''}" onclick="app.setMatrizViewMode('nivel2')">Áreas y subáreas</button>
+                        <button class="${mode === 'nivel1' ? 'active' : ''}" onclick="app.setMatrizViewMode('nivel1')">Nivel 1</button>
+                        <button class="${mode === 'nivel2' ? 'active' : ''}" onclick="app.setMatrizViewMode('nivel2')">Nivel 2</button>
                     </div>
                     <small style="color:var(--color-muted);">${mode === 'nivel1' ? 'Vista por áreas' : 'Vista por áreas y subáreas'}</small>
                 </div>`;
@@ -3611,7 +3608,6 @@
                     if (parent && element.y <= (parent.y || 50) + 80) element.y = (parent.y || 50) + 100;
                 }
                 if (element.type === 'area') {
-                    element.y = this.getAreaRowY();
                     DataModel.subareas.filter(s => s.parent === element.id).forEach(sub => {
                         if ((sub.y || 0) <= (element.y || 0) + 80) sub.y = (element.y || 0) + 100;
                     });
