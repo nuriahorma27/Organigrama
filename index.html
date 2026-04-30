@@ -2886,7 +2886,7 @@
                                 if (col.sub) {
                                     return `<th class="matrix-subarea-header ${isAreaStart ? 'matrix-area-boundary' : ''}">${this.escapeHtml(col.sub.name)}</th>`;
                                 } else {
-                                    return '';
+                                    return `<th class="matrix-subarea-header matrix-area-boundary" style="color:transparent;">Área</th>`;
                                 }
                             }).join('')}
                         </tr>
