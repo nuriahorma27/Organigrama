@@ -1102,6 +1102,7 @@
         manualConnections: [],
         excelColumns: [],
         excelRows: [],
+        businesses: [],
 
         addSuperior(superior) {
             const id = this.generateId('superior');
@@ -1212,6 +1213,7 @@
             this.subresponsibles = [];
             this.personas = [];
             this.manualConnections = [];
+            this.businesses = [];
         },
 
         setExcelData(columns, rows) {
@@ -1229,7 +1231,8 @@
                 personas: this.personas,
                 manualConnections: this.manualConnections,
                 excelColumns: this.excelColumns,
-                excelRows: this.excelRows
+                excelRows: this.excelRows,
+                businesses: this.businesses
             };
         },
 
@@ -1244,6 +1247,7 @@
             this.manualConnections = data.manualConnections || [];
             this.excelColumns = data.excelColumns || [];
             this.excelRows = data.excelRows || [];
+            this.businesses = data.businesses || [];
         }
     };
 
@@ -1646,7 +1650,7 @@
             const offscreen = document.createElement('div');
             offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;z-index:-1;';
             document.body.appendChild(offscreen);
-            this.renderMatrizViewInto(offscreen);
+            this.renderMatrizViewInto(offscreen, 'nivel2');
 
             const self = this;
             setTimeout(() => {
@@ -1696,7 +1700,7 @@
             const offscreen = document.createElement('div');
             offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;z-index:-1;';
             document.body.appendChild(offscreen);
-            this.renderMatrizViewInto(offscreen);
+            this.renderMatrizViewInto(offscreen, 'nivel2');
 
             const self = this;
             setTimeout(() => {
@@ -2904,8 +2908,8 @@
             this.showToast(`Subárea "${subarea.name}" asignada a "${area ? area.name : 'área'}"`, 'success');
         },
 
-        renderMatrizViewInto(container) {
-            this._renderMatrizViewCore(container);
+        renderMatrizViewInto(container, mode) {
+            this._renderMatrizViewCore(container, mode);
         },
 
         renderMatrizView() {
@@ -2914,7 +2918,7 @@
             this._renderMatrizViewCore(container);
         },
 
-        _renderMatrizViewCore(container) {
+        _renderMatrizViewCore(container, forceMode) {
             this.normalizeAssignedDisplayState();
             const assignedResponsibles = DataModel.responsibles.filter(r => this.isResponsibleAssigned(r));
             const assignedAreaIds = new Set(assignedResponsibles.map(r => this.getResponsibleAreaId(r)).filter(Boolean));
@@ -2933,7 +2937,7 @@
                 return;
             }
 
-            const mode = this.matrizViewMode || 'nivel1';
+            const mode = forceMode || this.matrizViewMode || 'nivel1';
             const assignedNegocio = assignedResponsibles.filter(r => this.getResponsibleScope(r) === 'negocio');
             const businesses = this.getBusinessOptions();
             const hasNegocioWithoutBusiness = assignedNegocio.some(r => !r.business);
