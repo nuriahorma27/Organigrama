@@ -1647,6 +1647,7 @@
                     useCORS: true,
                     allowTaint: true,
                     logging: false,
+                    delay: 500,
                     windowHeight: table.scrollHeight,
                     windowWidth: table.scrollWidth
                 }).then(canvas => {
@@ -1686,47 +1687,50 @@
             
             const self = this;
             
-            // Capturar solo la tabla para mejor calidad
-            const table = matrizContainer.querySelector('table');
-            window.html2canvas(table, { 
-                backgroundColor: '#FFFFFF', 
-                scale: 2,
-                useCORS: true,
-                allowTaint: true,
-                logging: false,
-                windowHeight: table.scrollHeight,
-                windowWidth: table.scrollWidth
-            }).then(canvas => {
-                if (canvas.width === 0 || canvas.height === 0) {
-                    throw new Error('Canvas vacío');
-                }
-                
-                const matrizImg = canvas.toDataURL('image/png');
-                
-                pdf.addPage('a4', 'landscape');
-                const newPW = pdf.internal.pageSize.getWidth();
-                const newPH = pdf.internal.pageSize.getHeight();
-                
-                const imgRatio = canvas.width / canvas.height;
-                let imgWidth = newPW - 40;
-                let imgHeight = imgWidth / imgRatio;
-                
-                if (imgHeight > newPH - 40) {
-                    imgHeight = newPH - 40;
-                    imgWidth = imgHeight * imgRatio;
-                }
-                
-                const xOffset = (newPW - imgWidth) / 2;
-                const yOffset = (newPH - imgHeight) / 2;
-                
-                pdf.addImage(matrizImg, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
-                pdf.save('organigrama_matriz.pdf');
-                self.showToast('PDF descargado: organigrama + matriz', 'success');
-            }).catch(err => {
-                console.error('Error captura matriz:', err);
-                pdf.save('organigrama_matriz.pdf');
-                self.showToast('PDF descargado (solo organigrama)', 'warning');
-            });
+            // Esperar a que renderice antes de capturar
+            setTimeout(() => {
+                const table = matrizContainer.querySelector('table');
+                window.html2canvas(table, { 
+                    backgroundColor: '#FFFFFF', 
+                    scale: 2,
+                    useCORS: true,
+                    allowTaint: true,
+                    logging: false,
+                    delay: 500,
+                    windowHeight: table.scrollHeight,
+                    windowWidth: table.scrollWidth
+                }).then(canvas => {
+                    if (canvas.width === 0 || canvas.height === 0) {
+                        throw new Error('Canvas vacío');
+                    }
+                    
+                    const matrizImg = canvas.toDataURL('image/png');
+                    
+                    pdf.addPage('a4', 'landscape');
+                    const newPW = pdf.internal.pageSize.getWidth();
+                    const newPH = pdf.internal.pageSize.getHeight();
+                    
+                    const imgRatio = canvas.width / canvas.height;
+                    let imgWidth = newPW - 40;
+                    let imgHeight = imgWidth / imgRatio;
+                    
+                    if (imgHeight > newPH - 40) {
+                        imgHeight = newPH - 40;
+                        imgWidth = imgHeight * imgRatio;
+                    }
+                    
+                    const xOffset = (newPW - imgWidth) / 2;
+                    const yOffset = (newPH - imgHeight) / 2;
+                    
+                    pdf.addImage(matrizImg, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
+                    pdf.save('organigrama_matriz.pdf');
+                    self.showToast('PDF descargado: organigrama + matriz', 'success');
+                }).catch(err => {
+                    console.error('Error captura matriz:', err);
+                    pdf.save('organigrama_matriz.pdf');
+                    self.showToast('PDF descargado (solo organigrama)', 'warning');
+                });
+            }, 200);
         },
 
         exportPNG() {
