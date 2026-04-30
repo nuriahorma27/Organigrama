@@ -8,6 +8,7 @@
     <!-- Librerías CDN -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.3/package/dist/xlsx.full.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
 
     <style>
         :root {
@@ -1442,8 +1443,8 @@
             menu.innerHTML = `
                 <div class="modal-content">
                     <div class="modal-header">📤 Exportar</div>
-                    <button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="app.exportPNG();app.closeModal('${modalId}')">🖼️ PNG (fondo blanco)</button>
-                    <button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="app.exportPDF();app.closeModal('${modalId}')">📑 PDF (fondo blanco)</button>
+                    <button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="app.exportImages();app.closeModal('${modalId}')">🖼️ 2 Imágenes JPG (Organigrama + Matriz)</button>
+                    <button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="app.exportPDFWithMatrix();app.closeModal('${modalId}')">📑 PDF (2 páginas: Organigrama + Matriz)</button>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" onclick="app.closeModal('${modalId}')">Cancelar</button>
                     </div>
@@ -1469,6 +1470,113 @@
             return exp;
         },
 
+        exportImages() {
+            // Descargar organigrama como JPG
+            this.buildExportCanvas().toBlob(blob => {
+                this.downloadFile(blob, 'organigrama.jpg');
+            }, 'image/jpeg', 0.95);
+
+            // Descargar matriz como JPG después de un pequeño delay
+            setTimeout(() => {
+                const matrizContainer = document.getElementById('matriz-content');
+                if (!matrizContainer || !matrizContainer.querySelector('table')) {
+                    this.showToast('Organigrama descargado. (Matriz no disponible)', 'success');
+                    return;
+                }
+                
+                // Crear un elemento temporal con la matriz
+                const tempDiv = document.createElement('div');
+                tempDiv.style.position = 'absolute';
+                tempDiv.style.top = '0';
+                tempDiv.style.left = '0';
+                tempDiv.style.background = '#FFFFFF';
+                tempDiv.style.padding = '2rem';
+                tempDiv.style.zIndex = '-9999';
+                tempDiv.style.width = '1200px';
+                tempDiv.innerHTML = matrizContainer.innerHTML;
+                document.body.appendChild(tempDiv);
+
+                window.html2canvas(tempDiv, { backgroundColor: '#FFFFFF', scale: 1.5, useCORS: true }).then(canvas => {
+                    canvas.toBlob(blob => {
+                        this.downloadFile(blob, 'matriz.jpg');
+                        document.body.removeChild(tempDiv);
+                        this.showToast('Descargadas 2 imágenes JPG: organigrama y matriz', 'success');
+                    }, 'image/jpeg', 0.95);
+                }).catch(err => {
+                    console.error('Error generando matriz JPG:', err);
+                    document.body.removeChild(tempDiv);
+                    this.showToast('Organigrama descargado. Error al descargar matriz JPG.', 'warning');
+                });
+            }, 200);
+        },
+
+        exportPDFWithMatrix() {
+            const { jsPDF } = window.jspdf;
+            const exp = this.buildExportCanvas();
+            const imgData = exp.toDataURL('image/png');
+            const W = exp.width;
+            const H = exp.height;
+            const orientation = W >= H ? 'landscape' : 'portrait';
+            
+            // Crear PDF con organigrama
+            const pdf = new jsPDF({ orientation, unit: 'px', format: [W, H], hotfixes: ['px_scaling'] });
+            const pW = pdf.internal.pageSize.getWidth();
+            const pH = pdf.internal.pageSize.getHeight();
+            
+            // Primera página: Organigrama
+            pdf.addImage(imgData, 'PNG', 0, 0, pW, pH);
+            
+            // Segunda página: Matriz
+            const matrizContainer = document.getElementById('matriz-content');
+            if (matrizContainer && matrizContainer.querySelector('table')) {
+                const tempDiv = document.createElement('div');
+                tempDiv.style.position = 'absolute';
+                tempDiv.style.top = '0';
+                tempDiv.style.left = '0';
+                tempDiv.style.background = '#FFFFFF';
+                tempDiv.style.padding = '1rem';
+                tempDiv.style.zIndex = '-9999';
+                tempDiv.style.width = '1200px';
+                tempDiv.innerHTML = matrizContainer.innerHTML;
+                document.body.appendChild(tempDiv);
+
+                window.html2canvas(tempDiv, { backgroundColor: '#FFFFFF', scale: 1, useCORS: true }).then(canvas => {
+                    const matrizImg = canvas.toDataURL('image/png');
+                    
+                    // Añadir página de matriz
+                    pdf.addPage('a4', 'landscape');
+                    const newPW = pdf.internal.pageSize.getWidth();
+                    const newPH = pdf.internal.pageSize.getHeight();
+                    
+                    // Escalar imagen para que quepa en la página
+                    const imgRatio = canvas.width / canvas.height;
+                    let imgWidth = newPW - 10;
+                    let imgHeight = imgWidth / imgRatio;
+                    
+                    if (imgHeight > newPH - 10) {
+                        imgHeight = newPH - 10;
+                        imgWidth = imgHeight * imgRatio;
+                    }
+                    
+                    const xOffset = (newPW - imgWidth) / 2;
+                    const yOffset = 5;
+                    
+                    pdf.addImage(matrizImg, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
+                    document.body.removeChild(tempDiv);
+                    pdf.save('organigrama_matriz.pdf');
+                    this.showToast('PDF descargado: Página 1 (organigrama) + Página 2 (matriz)', 'success');
+                }).catch(err => {
+                    console.error('Error generando PDF con matriz:', err);
+                    document.body.removeChild(tempDiv);
+                    pdf.save('organigrama_matriz.pdf');
+                    this.showToast('PDF descargado (solo organigrama - error al procesar matriz)', 'warning');
+                });
+            } else {
+                pdf.save('organigrama_matriz.pdf');
+                this.showToast('PDF descargado (sin matriz disponible)', 'warning');
+            }
+        },
+
         exportPNG() {
             this.buildExportCanvas().toBlob(blob => {
                 this.downloadFile(blob, 'organigrama.png');
@@ -1482,7 +1590,6 @@
             const { jsPDF } = window.jspdf;
             const W = exp.width, H = exp.height;
             const orientation = W >= H ? 'landscape' : 'portrait';
-            // Crea el PDF con las dimensiones exactas del canvas (en píxeles)
             const pdf = new jsPDF({ orientation, unit: 'px', format: [W, H], hotfixes: ['px_scaling'] });
             const pW = pdf.internal.pageSize.getWidth();
             const pH = pdf.internal.pageSize.getHeight();
@@ -2514,7 +2621,7 @@
                     .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
                 const uniqueNames = [...new Set(items.map(r => r.name).filter(Boolean))];
                 if (!uniqueNames.length) return '<span style="color:#A0AEC0;">-</span>';
-                return uniqueNames.map(name => personPill(name, row.color)).join('');
+                return this.renderNamePills(uniqueNames, row.color, 3);
             };
 
             const renderLevelCells = (row, cellsHtml) => {
@@ -2549,7 +2656,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${rows.map(row => renderLevelCells(row, areas.map(area => `<td style="min-width:180px;vertical-align:middle;background:${row.bg};">${cellForNivel1(row, area)}</td>`).join(''))).join('')}
+                        ${rows.map(row => renderLevelCells(row, areas.map(area => `<td style="min-width:180px;vertical-align:middle;text-align:center;background:${row.bg};">${cellForNivel1(row, area)}</td>`).join(''))).join('')}
                     </tbody>
                 </table>`;
                 return;
@@ -2560,19 +2667,69 @@
                 ...DataModel.subareas.filter(s => s.parent === area.id).map(sub => ({ area, sub }))
             ]);
             renderLevelCells.seen = {};
+            
+            // Agrupar áreas por sección superior
+            const superiorAreas = {};
+            areas.forEach(area => {
+                const superiorId = DataModel.superiors.find(s => {
+                    const areaIds = (s.areas || []);
+                    return areaIds.includes(area.id);
+                })?.id || '__none__';
+                if (!superiorAreas[superiorId]) superiorAreas[superiorId] = [];
+                superiorAreas[superiorId].push(area);
+            });
+            
+            const hasAnySuperior = DataModel.superiors.length > 0;
+            const headerRows = hasAnySuperior ? 3 : 2;
+            
             container.innerHTML = controls + `
                 <table class="excel-table" style="min-width:${Math.max(1100, 260 + subareaColumns.length * 160)}px;">
                     <thead>
+                        ${hasAnySuperior ? `<tr>
+                            <th rowspan="${headerRows}">Nivel</th>
+                            <th rowspan="${headerRows}">Grupo / Negocio / SGS</th>
+                            ${DataModel.superiors.map(superior => {
+                                const areaCount = superior.areas ? superior.areas.filter(aId => areas.some(a => a.id === aId)).length : 0;
+                                if (areaCount === 0) return '';
+                                const totalCols = superior.areas
+                                    .filter(aId => areas.some(a => a.id === aId))
+                                    .reduce((sum, aId) => {
+                                        const area = areas.find(a => a.id === aId);
+                                        const sCount = DataModel.subareas.filter(s => s.parent === area.id).length;
+                                        return sum + (sCount > 0 ? sCount : 1);
+                                    }, 0);
+                                const superiorBg = lightenColor(superior.color, 0.95);
+                                return `<th colspan="${totalCols}" style="text-align:center;background:${superiorBg};color:${superior.color};font-weight:900;font-size:0.98rem;">${this.escapeHtml(superior.name)}</th>`;
+                            }).join('')}
+                            ${areas.length > 0 && !areas.every(a => DataModel.superiors.some(s => s.areas && s.areas.includes(a.id))) ? (() => {
+                                const unassignedAreas = areas.filter(a => !DataModel.superiors.some(s => s.areas && s.areas.includes(a.id)));
+                                const totalCols = unassignedAreas.reduce((sum, area) => {
+                                    const sCount = DataModel.subareas.filter(s => s.parent === area.id).length;
+                                    return sum + (sCount > 0 ? sCount : 1);
+                                }, 0);
+                                return `<th colspan="${totalCols}" style="text-align:center;background:#F5F5F5;color:#888;font-weight:900;font-size:0.98rem;">Sin Sección</th>`;
+                            })() : ''}
+                        </tr>` : ''}
                         <tr>
-                            <th rowspan="2">Nivel</th>
-                            <th rowspan="2">Grupo / Negocio / SGS</th>
+                            <th rowspan="${hasAnySuperior ? 1 : 2}">Nivel</th>
+                            <th rowspan="${hasAnySuperior ? 1 : 2}">Grupo / Negocio / SGS</th>
                             ${areas.map(area => {
-                                const count = 1 + DataModel.subareas.filter(s => s.parent === area.id).length;
-                                return `<th colspan="${count}" style="text-align:center;">${this.escapeHtml(area.name)}</th>`;
+                                const subareaCount = DataModel.subareas.filter(s => s.parent === area.id).length;
+                                const count = subareaCount > 0 ? subareaCount : 1;
+                                const areaBg = lightenColor(area.color, 0.92);
+                                return `<th colspan="${count}" style="text-align:center;background:${areaBg};color:${area.color};font-weight:800;font-size:0.95rem;">${this.escapeHtml(area.name)}</th>`;
                             }).join('')}
                         </tr>
                         <tr>
-                            ${subareaColumns.map(col => `<th style="min-width:160px;text-align:center;">${col.sub ? this.escapeHtml(col.sub.name) : 'Área'}</th>`).join('')}
+                            ${subareaColumns.map(col => {
+                                if (col.sub) {
+                                    const subareaBg = lightenColor(col.area.color, 0.85);
+                                    const subareaColor = darkenColor(col.area.color, 0.15);
+                                    return `<th style="min-width:160px;text-align:center;background:${subareaBg};color:${subareaColor};font-weight:700;font-size:0.9rem;">${this.escapeHtml(col.sub.name)}</th>`;
+                                } else {
+                                    return '';
+                                }
+                            }).join('')}
                         </tr>
                     </thead>
                     <tbody>
@@ -2580,11 +2737,30 @@
                             const items = responsiblesFor(row, col.area, col.sub);
                             const directItems = col.sub ? items : items.filter(r => !r.subarea);
                             const uniqueNames = [...new Set(directItems.map(r => r.name).filter(Boolean))];
-                            const content = uniqueNames.length ? uniqueNames.map(name => personPill(name, row.color)).join('') : '<span style="color:#A0AEC0;">-</span>';
-                            return `<td style="min-width:160px;vertical-align:middle;background:${row.bg};">${content}</td>`;
+                            const cellBg = col.sub ? lightenColor(col.area.color, 0.9) : lightenColor(col.area.color, 0.96);
+                            const content = uniqueNames.length ? this.renderNamePills(uniqueNames, row.color, 3) : '<span style="color:#A0AEC0;">-</span>';
+                            return `<td style="min-width:160px;vertical-align:middle;text-align:center;background:${cellBg};padding:0.75rem;">${content}</td>`;
                         }).join(''))).join('')}
                     </tbody>
                 </table>`;
+        },
+
+        renderNamePills(names, color, maxVisible = 3) {
+            if (names.length <= maxVisible) {
+                return names.map(name => `
+                    <div style="display:inline-block;margin:0.15rem 0.2rem 0.15rem 0;padding:0.35rem 0.55rem;border:1px solid ${color};background:#FFFFFF;border-radius:4px;font-weight:600;color:#1F2D3D;line-height:1.2;">
+                        ${this.escapeHtml(name)}
+                    </div>`).join('');
+            }
+            const visible = names.slice(0, maxVisible);
+            const hidden = names.length - maxVisible;
+            return visible.map(name => `
+                <div style="display:inline-block;margin:0.15rem 0.2rem 0.15rem 0;padding:0.35rem 0.55rem;border:1px solid ${color};background:#FFFFFF;border-radius:4px;font-weight:600;color:#1F2D3D;line-height:1.2;">
+                    ${this.escapeHtml(name)}
+                </div>`).join('') + `
+                <div style="display:inline-block;margin:0.15rem 0.2rem 0.15rem 0;padding:0.35rem 0.55rem;border:2px solid ${color};background:#FFFFFF;border-radius:4px;font-weight:700;color:${color};line-height:1.2;cursor:default;">
+                    +${hidden}
+                </div>`;
         },
 
         // ============================================
