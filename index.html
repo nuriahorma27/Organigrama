@@ -3792,7 +3792,7 @@
                     const to = DataModel.getElementById(connection.to);
                     if (!from || !to || from.placed !== true || to.placed !== true) return false;
                     const point = this.getConnectionDeletePoint(from, to, connection);
-                    return Math.hypot(x - point.x, y - point.y) <= 12 || this.distanceToConnection(x, y, from, to, connection) <= 8;
+                    return Math.hypot(x - point.x, y - point.y) <= 10;
                 });
                 if (manualHit) return manualHit;
 
@@ -3802,7 +3802,7 @@
                     for (const target of targets) {
                         const connection = { type: 'section-target', sectionId: section.id, targetId: target.id, fromAnchor: 'bottom', toAnchor: 'top' };
                         const point = this.getConnectionDeletePoint(section, target, connection);
-                        if (Math.hypot(x - point.x, y - point.y) <= 12 || this.distanceToConnection(x, y, section, target, connection) <= 8) return connection;
+                        if (Math.hypot(x - point.x, y - point.y) <= 10) return connection;
                     }
                 }
                 return null;
