@@ -2050,7 +2050,7 @@
                 scope: 'corporativo',
                 x: null,
                 y: null,
-                placed: target?.placed === true,
+                placed: false,
                 manualAssigned: Boolean(area || subarea)
             });
             this.closeModal('add-responsible-modal');
@@ -3045,7 +3045,7 @@
                 attachedTo: target.id,
                 scope,
                 business,
-                placed: target.placed === true,
+                placed: false,
                 x: null,
                 y: null,
                 area: null,
@@ -3658,16 +3658,6 @@
                         .filter(sub => sub.parent === parent.id && sub.placed === true)
                         .sort((a, b) => (a.y || 0) - (b.y || 0));
                     this.drawBracketConnections(parent, subs, parent.color || '#0057A8', { alpha: 0.48 });
-                });
-
-                // Responsable → Área o Subárea
-                DataModel.responsibles.forEach(resp => {
-                    const area = DataModel.areas.find(a => a.id === resp.area);
-                    const sub = DataModel.subareas.find(s => s.id === resp.subarea);
-                    const source = sub || area;
-                    if (source && resp.placed === true && source.placed === true) {
-                        this.drawConnectionLine(source, resp, 'solid', area ? area.color : '#0078D4', 0.35, { fromAnchor: 'bottom', toAnchor: 'top' });
-                    }
                 });
 
                 ctx.globalAlpha = 1;
