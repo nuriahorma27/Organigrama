@@ -4179,6 +4179,22 @@
                 );
             },
 
+            getAssignmentLabelHeight(element, w) {
+                const entries = [
+                    ...DataModel.getAssignedResponsibles(element),
+                    ...DataModel.getAssignedPersonas(element)
+                ];
+                if (!entries.length) return 0;
+                const visibleCount = Math.min(entries.length, 3) + (entries.length > 3 ? 1 : 0);
+                const labelH = 22;
+                const gap = 5;
+                const maxRowW = Math.max(w + 120, 260);
+                const estimatedPillW = 140 + gap;
+                const perRow = Math.max(1, Math.floor((maxRowW + gap) / estimatedPillW));
+                const rows = Math.ceil(visibleCount / perRow);
+                return rows * labelH + Math.max(0, rows - 1) * gap + 10;
+            },
+
             autoLayout(showMessage = true) {
                 const PAD        = 50;
                 const AREA_W     = 220;
@@ -4231,6 +4247,8 @@
 
                     let sy = V_SUB;
                     subs.forEach(sub => {
+                        const subLabelH = this.getAssignmentLabelHeight(sub, SUB_W);
+                        if (subLabelH) sy += subLabelH;
                         sub.x = x + (blockW - SUB_W) / 2;
                         sub.y = sy;
 
@@ -4241,7 +4259,10 @@
                             r.x = srx + i * (RESP_W + H_GAP_RESP);
                             r.y = sub.y + 90;
                         });
-                        sy += subResps.length ? 170 : 80;
+                        const respLabelH = subResps.length
+                            ? Math.max(...subResps.map(r => this.getAssignmentLabelHeight(r, RESP_W)))
+                            : 0;
+                        sy += subResps.length ? 170 + respLabelH : 80;
                         maxOrgY = Math.max(maxOrgY, sy, ...subResps.map(r => (r.y || 0) + 80));
                     });
 
