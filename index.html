@@ -220,6 +220,24 @@
         .tree-row.responsible .btn-small:hover {
             color: #000000;
         }
+        .tree-unplace-button {
+            color: #0F172A !important;
+            background: rgba(255,255,255,0.82);
+            border-radius: 4px;
+            font-weight: 900;
+            line-height: 1;
+        }
+        .tree-row.area .tree-unplace-button,
+        .tree-row.superior .tree-unplace-button {
+            color: #FFFFFF !important;
+            background: rgba(0,0,0,0.28);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.35);
+        }
+        .tree-row.responsible .tree-unplace-button {
+            color: #000000 !important;
+            background: rgba(255,255,255,0.75);
+            text-shadow: none;
+        }
 
         /* Canvas Area */
         .canvas-area { flex: 1; background-color: var(--color-background); position: relative; overflow: hidden; display: flex; flex-direction: column; }
@@ -2420,7 +2438,7 @@
                 <div class="tree-row ${kind}" draggable="true" data-element-id="${item.id}" style="${style}"${title}>
                     <span class="tree-name">${this.escapeHtml(item.name)}</span>
                     ${assignedTo ? `<button class="btn-small" onclick="event.stopPropagation();app.unassignResponsible('${item.id}')" title="Quitar asignación">✕</button>` : ''}
-                    ${item.placed === true ? `<button class="btn-small" onclick="event.stopPropagation();app.unplaceElement('${item.id}')" title="Quitar del papel">✕</button>` : ''}
+                    ${item.placed === true ? `<button class="btn-small tree-unplace-button" onclick="event.stopPropagation();app.unplaceElement('${item.id}')" title="Quitar del papel">✕</button>` : ''}
                 </div>`;
         },
 
@@ -2840,7 +2858,7 @@
                                     .reduce((sum, aId) => {
                                         const area = areas.find(a => a.id === aId);
                                         const sCount = DataModel.subareas.filter(s => s.parent === area.id && s.placed === true).length;
-                                        return sum + (sCount > 0 ? sCount : 1);
+                                        return sum + 1 + sCount;
                                     }, 0);
                                 const superiorBg = lightenColor(superior.color, 0.95);
                                 return `<th colspan="${totalCols}" class="matrix-section-header" style="background:${superiorBg};color:${superior.color};">${this.escapeHtml(superior.name)}</th>`;
@@ -2849,7 +2867,7 @@
                                 const unassignedAreas = areas.filter(a => !DataModel.superiors.some(s => s.areas && s.areas.includes(a.id)));
                                 const totalCols = unassignedAreas.reduce((sum, area) => {
                                     const sCount = DataModel.subareas.filter(s => s.parent === area.id && s.placed === true).length;
-                                    return sum + (sCount > 0 ? sCount : 1);
+                                    return sum + 1 + sCount;
                                 }, 0);
                                 return `<th colspan="${totalCols}" class="matrix-section-spacer"></th>`;
                             })() : ''}
@@ -2858,7 +2876,7 @@
                             ${!hasAnySuperior ? `<th rowspan="2" colspan="2" class="matrix-stub-header"></th>` : ''}
                             ${areas.map(area => {
                                 const subareaCount = DataModel.subareas.filter(s => s.parent === area.id && s.placed === true).length;
-                                const count = subareaCount > 0 ? subareaCount : 1;
+                                const count = 1 + subareaCount;
                                 return `<th colspan="${count}" class="matrix-area-header matrix-area-boundary">${this.escapeHtml(area.name)}</th>`;
                             }).join('')}
                         </tr>
@@ -3523,6 +3541,7 @@
                     element.attachedTo = target.id;
                     element.x = null;
                     element.y = null;
+                    element.placed = false;
                     if (target.type === 'responsible') {
                         element.responsible = target.id;
                         element.area = target.area || element.area || null;
@@ -4195,10 +4214,7 @@
             },
 
             getAssignmentLabelHeight(element, w) {
-                const entries = [
-                    ...DataModel.getAssignedResponsibles(element),
-                    ...DataModel.getAssignedPersonas(element)
-                ];
+                const entries = DataModel.getAssignedResponsibles(element);
                 if (!entries.length) return 0;
                 const visibleCount = Math.min(entries.length, 3) + (entries.length > 3 ? 1 : 0);
                 const labelH = 22;
