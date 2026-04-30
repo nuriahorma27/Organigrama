@@ -906,121 +906,125 @@
                 <div class="sheet-wrap" style="padding:1.5rem;max-width:900px;">
 
                     <div class="instructions-grid">
-                        <div class="instruction-step"><div class="instruction-icon">1</div><h3>Importa tu Excel</h3><p>Pulsa <b>Importar datos</b> y sube tu archivo. Si tiene las columnas Sección, Área, Subárea, Responsable y Capa, el organigrama se construye automáticamente. Si tiene una pestaña "Negocios", también se cargan los tipos de negocio.</p></div>
-                        <div class="instruction-step"><div class="instruction-icon">2</div><h3>Añade elementos</h3><p>Usa el botón <b>+ Añadir nuevo</b> (esquina inferior derecha) para crear áreas, subáreas, responsables o secciones escribiendo solo el nombre. Aparecerán en la lista de la izquierda.</p></div>
-                        <div class="instruction-step"><div class="instruction-icon">3</div><h3>Arrastra al lienzo</h3><p>Desde la columna izquierda, arrastra los elementos que quieras al lienzo. Las cajas se colocan donde las sueltes. Usa <b>Auto-layout</b> para ordenarlas automáticamente.</p></div>
-                        <div class="instruction-step"><div class="instruction-icon">4</div><h3>Asigna responsables</h3><p>Suelta un responsable encima de un área o subárea ya colocada. Se abrirá un selector para elegir si lidera a nivel Corporativo, Negocio o SGS.</p></div>
-                        <div class="instruction-step"><div class="instruction-icon">5</div><h3>Modelo Tricapa</h3><p>La pestaña <b>Modelo tricapa</b> muestra la tabla de responsables cruzada con áreas y subáreas. Nivel 1 agrupa por área, Nivel 2 desglosa por subárea. El export siempre usa Nivel 2.</p></div>
-                        <div class="instruction-step"><div class="instruction-icon">6</div><h3>Modifica nombres</h3><p>Pulsa <b>✎ Modificar</b> (esquina inferior derecha), elige el tipo y el elemento, escribe el nuevo nombre y guarda. El cambio se aplica en el organigrama, la tabla de datos y el modelo tricapa.</p></div>
+                        <div class="instruction-step"><div class="instruction-icon">1</div><h3>Importa o empieza a mano</h3><p>Pulsa <b>Importar datos</b> en la parte superior para cargar un .xlsx, .xls, .numbers, .ods o .csv. También puedes empezar desde cero con <b>+ Añadir nuevo</b>.</p></div>
+                        <div class="instruction-step"><div class="instruction-icon">2</div><h3>Revisa la lista izquierda</h3><p>Todo lo creado o importado aparece en Organización, separado por secciones con buscador propio. Cada bloque tiene scroll independiente para trabajar con muchas áreas, subáreas y responsables.</p></div>
+                        <div class="instruction-step"><div class="instruction-icon">3</div><h3>Construye el organigrama</h3><p>Arrastra las cajas al lienzo. La primera se coloca centrada; las siguientes se colocan a la derecha de primeras, pero luego puedes moverlas para cambiar el orden visual.</p></div>
+                        <div class="instruction-step"><div class="instruction-icon">4</div><h3>Asocia sin desordenar</h3><p>Si asocias una subárea a un área, la subárea se recoloca debajo del área manteniendo una estructura limpia. Si hay varias, se reparten dejando espacio entre ellas.</p></div>
+                        <div class="instruction-step"><div class="instruction-icon">5</div><h3>Añade responsables</h3><p>Arrastra un responsable sobre la caja correspondiente y elige la capa. El nombre se dibuja encima de la caja asignada y no debe crear líneas nuevas en el organigrama.</p></div>
+                        <div class="instruction-step"><div class="instruction-icon">6</div><h3>Exporta el resultado</h3><p>Usa <b>Exportar</b> para descargar el organigrama y el modelo tricapa. La exportación centra el contenido real y no depende de la posición del fondo del lienzo.</p></div>
                     </div>
 
                     <div class="faq-section">
-                        <h2>Preguntas frecuentes</h2>
+                        <h2>Uso práctico</h2>
 
                         <div class="faq-item">
                             <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
-                                ¿Cómo preparo el Excel para que el organigrama se construya solo?
+                                ¿Qué columnas debe tener el archivo importado?
                                 <span class="faq-arrow">▼</span>
                             </button>
                             <div class="faq-answer">
-                                Tu archivo debe tener una pestaña con exactamente estas cinco columnas: <b>Sección</b>, <b>Área</b>, <b>Subárea</b>, <b>Responsable</b> y <b>Capa</b>. Cada fila es una combinación. Si un área tiene varios responsables, repite la fila con distinto nombre en la columna Responsable. Los valores válidos para Capa son <b>Corporativo</b>, <b>SGS</b> y <b>Negocios</b>. Si la celda de Responsable está vacía o pone "N/A", esa fila se ignora para los responsables pero el área y subárea sí se crean. Si quieres cargar los tipos de negocio, añade una segunda pestaña llamada <b>Negocios</b> con un nombre de negocio por fila.
+                                La importación funciona mejor con columnas llamadas <b>Sección</b>, <b>Área</b>, <b>Subárea</b>, <b>Responsable</b> y <b>Capa</b>. Si hay varias personas en una misma posición, repite la combinación en filas distintas. Para responsables de negocio, añade el nombre del negocio si tu archivo lo incluye; si existe una pestaña <b>Negocios</b>, se usa para completar las filas del modelo tricapa.
                             </div>
                         </div>
 
                         <div class="faq-item">
                             <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
-                                ¿Qué diferencia hay entre Área y Subárea?
+                                ¿Por qué algo aparece en la izquierda pero no en el lienzo?
                                 <span class="faq-arrow">▼</span>
                             </button>
                             <div class="faq-answer">
-                                Las <b>Áreas</b> son las unidades principales del organigrama (cajas azules grandes). Las <b>Subáreas</b> son unidades que dependen de un Área y se muestran por debajo de ella (cajas azul claro). En el Modelo tricapa, el Nivel 1 agrupa la información solo por Área, mientras que el Nivel 2 la desglosa también por Subárea.
+                                La lista izquierda es el repositorio de elementos disponibles. Para que una caja forme parte del organigrama visible tienes que arrastrarla al lienzo. Si quieres retirarla del papel sin borrarla de los datos, pulsa la cruz de quitar del papel en esa misma lista.
                             </div>
                         </div>
 
                         <div class="faq-item">
                             <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
-                                ¿Qué es una Sección?
+                                ¿Cómo se ordenan las cajas al crear relaciones?
                                 <span class="faq-arrow">▼</span>
                             </button>
                             <div class="faq-answer">
-                                Las <b>Secciones</b> son agrupadores que aparecen por encima, al mismo nivel o por debajo de las áreas en el lienzo. Sirven para organizar las áreas bajo un mismo paraguas (por ejemplo, una dirección general). En el Modelo tricapa, la sección de cada área aparece como cabecera de columna.
+                                Las áreas permanecen alineadas a la misma altura. Cuando una subárea se vincula a un área, se coloca debajo de su área y se separa del resto para que quepan los nombres. Las secciones superiores se centran por encima de las áreas que agrupan.
                             </div>
                         </div>
 
                         <div class="faq-item">
                             <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
-                                ¿Qué significa Capa (Corporativo, SGS, Negocios)?
+                                ¿Puedo cambiar el orden de las áreas?
                                 <span class="faq-arrow">▼</span>
                             </button>
                             <div class="faq-answer">
-                                La <b>Capa</b> indica el nivel de liderazgo del responsable:<br>
-                                • <b>Corporativo</b> (azul oscuro): responsable a nivel de grupo, transversal a todos los negocios.<br>
-                                • <b>Negocios</b> (azul claro): responsable específico de una línea de negocio.<br>
-                                • <b>SGS</b> (naranja): responsable de la factoría de servicios compartidos.<br>
-                                En el Modelo tricapa cada capa ocupa una fila diferente de la tabla.
+                                Sí. Puedes arrastrar un área a la izquierda o a la derecha para recolocarla. Después, si añades subáreas o responsables, el sistema mantiene el orden visual que hayas dejado en el lienzo.
                             </div>
                         </div>
 
                         <div class="faq-item">
                             <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
-                                He creado un elemento pero no aparece en el lienzo, ¿por qué?
+                                ¿Cómo funcionan las líneas?
                                 <span class="faq-arrow">▼</span>
                             </button>
                             <div class="faq-answer">
-                                Los elementos recién creados (desde <b>+ Añadir nuevo</b> o importados sin posición) aparecen en la <b>lista de la izquierda</b> pero no en el lienzo hasta que los arrastras. Esto es intencionado: tú decides qué elementos quieres mostrar y dónde. Una vez arrastrado, puedes reorganizarlo con el botón <b>Auto-layout</b>.
+                                Las líneas principales se dibujan a partir de las asociaciones del organigrama. Para unir manualmente, usa el botón de unión del lienzo y selecciona dos cajas válidas. Las líneas manuales solo se eliminan pulsando su cruz, no haciendo clic sobre la línea.
                             </div>
                         </div>
 
                         <div class="faq-item">
                             <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
-                                ¿Cómo asigno un responsable a un área o subárea?
+                                ¿Cómo asigno responsables sin crear cajas o líneas extra?
                                 <span class="faq-arrow">▼</span>
                             </button>
                             <div class="faq-answer">
-                                El área o subárea tiene que estar ya en el lienzo. Luego arrastra el responsable desde la columna de la izquierda y suéltalo encima de esa caja. Se abrirá un modal donde eliges la Capa (Corporativo, SGS o Negocios). Si eliges Negocios, aparece un segundo selector para elegir a qué negocio pertenece.
+                                Arrastra el responsable sobre el área, subárea o sección correspondiente. Se guardará como asignación y aparecerá como etiqueta dentro o encima de esa caja. No hace falta colocar al responsable como caja independiente.
                             </div>
                         </div>
 
                         <div class="faq-item">
                             <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
-                                ¿Puedo tener el mismo responsable en varias áreas o subáreas?
+                                ¿Qué muestra el modelo tricapa?
                                 <span class="faq-arrow">▼</span>
                             </button>
                             <div class="faq-answer">
-                                Sí. Puedes asignar el mismo nombre de responsable a distintas áreas o subáreas. En el Excel, basta con repetir la fila con el mismo nombre en Responsable pero distinta Área o Subárea. En el organigrama aparecerá una caja por cada asignación. En el Modelo tricapa, el nombre aparecerá en cada columna que le corresponda.
+                                El <b>Nivel 1</b> cruza responsables por área. El <b>Nivel 2</b> abre las columnas por subárea y añade una separación fina entre ellas. Las filas de Corporativo, los negocios y SGS aparecen siempre; solo se rellenan las celdas que tienen responsables asignados.
                             </div>
                         </div>
 
                         <div class="faq-item">
                             <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
-                                ¿Cómo cambio el nombre de un área, subárea o responsable?
+                                ¿Para qué sirve la pestaña Datos?
                                 <span class="faq-arrow">▼</span>
                             </button>
                             <div class="faq-answer">
-                                Pulsa el botón <b>✎ Modificar</b> en la esquina inferior derecha del organigrama. Elige el tipo (Área, Subárea, Responsable o Sección), selecciona el elemento concreto en el desplegable y escribe el nuevo nombre. Al pulsar <b>Guardar</b>, el cambio se propaga automáticamente al lienzo, a la tabla de Datos y al Modelo tricapa.
+                                Sirve para revisar y ajustar el contenido importado. Puedes editar celdas, añadir filas o columnas y sincronizar para reconstruir la vista de organización con esos datos.
                             </div>
                         </div>
 
                         <div class="faq-item">
                             <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
-                                ¿Cómo exporto el resultado?
+                                ¿Cómo modifico nombres después?
                                 <span class="faq-arrow">▼</span>
                             </button>
                             <div class="faq-answer">
-                                Pulsa el botón <b>Exportar</b> en la barra de navegación superior. Puedes elegir entre:<br>
-                                • <b>2 imágenes JPG</b>: una con el organigrama y otra con la tabla del Modelo tricapa (Nivel 2).<br>
-                                • <b>PDF de 2 páginas</b>: la primera con el organigrama y la segunda con la tabla.<br>
-                                También puedes elegir si exportar con o sin los nombres de los responsables visibles.
+                                En Organización, pulsa <b>✎ Modificar</b>, elige el tipo de elemento, selecciona el nombre actual y escribe el nuevo. El cambio se actualiza en el lienzo, en la matriz y en los datos guardados.
                             </div>
                         </div>
 
                         <div class="faq-item">
                             <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
-                                ¿Los datos se guardan automáticamente?
+                                ¿Qué incluye la exportación?
                                 <span class="faq-arrow">▼</span>
                             </button>
                             <div class="faq-answer">
-                                Sí. Cada cambio que haces (mover una caja, asignar un responsable, renombrar un elemento…) se guarda automáticamente en el almacenamiento local de tu navegador. No necesitas pulsar ningún botón de guardar. Si cierras la pestaña y la vuelves a abrir, todo estará como lo dejaste. Ten en cuenta que si borras los datos del navegador o usas otro navegador/dispositivo, el trabajo no estará disponible.
+                                Puedes generar dos JPG o un PDF de dos páginas. La primera página contiene el organigrama centrado y la segunda el modelo tricapa en Nivel 2, dimensionado para entrar en la hoja. Puedes elegir si se exportan o no los nombres visibles.
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
+                                ¿Se guarda el trabajo?
+                                <span class="faq-arrow">▼</span>
+                            </button>
+                            <div class="faq-answer">
+                                Sí. Los cambios se guardan automáticamente en tu repositorio local: posiciones, asignaciones, nombres, datos importados y negocio seleccionado. La información queda en tu entorno de trabajo y nadie más puede verla desde la herramienta.<br><br>
+                                <b>Importante:</b> no es un guardado en la nube. Puedes cerrar y volver a abrir la herramienta sin perder el trabajo, pero podrías perderlo si limpias los datos locales, cambias de ordenador, usas otro usuario, sustituyes el archivo por una versión nueva sin conservar los datos, o se borra/restaura la carpeta donde estás trabajando.
                             </div>
                         </div>
 
