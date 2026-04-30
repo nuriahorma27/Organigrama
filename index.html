@@ -1629,23 +1629,39 @@
         createMatrixExportElement() {
             const matrizContainer = document.getElementById('matriz-content');
             if (!matrizContainer || !matrizContainer.querySelector('table')) return null;
+            
             const tempDiv = document.createElement('div');
-            tempDiv.style.position = 'absolute';
-            tempDiv.style.top = '0';
+            tempDiv.style.position = 'fixed';
+            tempDiv.style.top = '-100000px';
             tempDiv.style.left = '-100000px';
             tempDiv.style.background = '#FFFFFF';
-            tempDiv.style.padding = '1rem';
+            tempDiv.style.padding = '1.5rem';
             tempDiv.style.zIndex = '-9999';
             tempDiv.style.width = 'max-content';
             tempDiv.style.maxWidth = 'none';
+            tempDiv.style.visibility = 'hidden';
             tempDiv.innerHTML = matrizContainer.innerHTML;
-            tempDiv.querySelectorAll('.segmented-control, small').forEach(el => el.remove());
+            
+            // Remover controles innecesarios
+            tempDiv.querySelectorAll('.segmented-control, small, .sheet-toolbar').forEach(el => el.remove());
+            
+            // Optimizar tabla para exportación
             const table = tempDiv.querySelector('table');
             if (table) {
-                table.style.transformOrigin = 'top left';
                 table.style.width = 'max-content';
+                table.style.borderCollapse = 'collapse';
+                // Asegurar que los estilos CSS se apliquen
+                const cells = table.querySelectorAll('th, td');
+                cells.forEach(cell => {
+                    cell.style.display = 'table-cell';
+                });
             }
+            
             document.body.appendChild(tempDiv);
+            
+            // Forzar reflow para asegurar que los estilos se apliquen
+            tempDiv.offsetHeight;
+            
             return tempDiv;
         },
 
@@ -1653,28 +1669,41 @@
             // Descargar organigrama como JPG
             this.buildExportCanvas().toBlob(blob => {
                 this.downloadFile(blob, 'organigrama.jpg');
+                this.showToast('Organigrama descargado...', 'success');
             }, 'image/jpeg', 0.95);
 
-            // Descargar matriz como JPG después de un pequeño delay
+            // Descargar matriz como JPG después de un delay más largo
             setTimeout(() => {
                 const tempDiv = this.createMatrixExportElement();
                 if (!tempDiv) {
-                    this.showToast('Organigrama descargado. (Matriz no disponible)', 'success');
+                    this.showToast('Matriz no disponible', 'warning');
                     return;
                 }
 
-                window.html2canvas(tempDiv, { backgroundColor: '#FFFFFF', scale: 1, useCORS: true, windowWidth: tempDiv.scrollWidth, windowHeight: tempDiv.scrollHeight }).then(canvas => {
+                const self = this;
+                window.html2canvas(tempDiv, { 
+                    backgroundColor: '#FFFFFF', 
+                    scale: 0.8, 
+                    useCORS: true,
+                    allowTaint: true,
+                    windowWidth: Math.min(tempDiv.scrollWidth, 1600),
+                    windowHeight: tempDiv.scrollHeight 
+                }).then(canvas => {
                     canvas.toBlob(blob => {
-                        this.downloadFile(blob, 'matriz.jpg');
-                        document.body.removeChild(tempDiv);
-                        this.showToast('Descargadas 2 imágenes JPG: organigrama y matriz', 'success');
+                        self.downloadFile(blob, 'matriz.jpg');
+                        try {
+                            document.body.removeChild(tempDiv);
+                        } catch(e) {}
+                        self.showToast('Descargadas 2 imágenes JPG: organigrama y matriz', 'success');
                     }, 'image/jpeg', 0.95);
                 }).catch(err => {
                     console.error('Error generando matriz JPG:', err);
-                    document.body.removeChild(tempDiv);
-                    this.showToast('Organigrama descargado. Error al descargar matriz JPG.', 'warning');
+                    try {
+                        document.body.removeChild(tempDiv);
+                    } catch(e) {}
+                    self.showToast('Organigrama descargado. Matriz: error al generar imagen.', 'warning');
                 });
-            }, 200);
+            }, 600);
         },
 
         exportPDFWithMatrix() {
@@ -1696,31 +1725,43 @@
             // Segunda página: Matriz
             const tempDiv = this.createMatrixExportElement();
             if (tempDiv) {
-                window.html2canvas(tempDiv, { backgroundColor: '#FFFFFF', scale: 1, useCORS: true, windowWidth: tempDiv.scrollWidth, windowHeight: tempDiv.scrollHeight }).then(canvas => {
+                window.html2canvas(tempDiv, { 
+                    backgroundColor: '#FFFFFF', 
+                    scale: 0.8, 
+                    useCORS: true, 
+                    windowWidth: Math.min(tempDiv.scrollWidth, 1600),
+                    windowHeight: tempDiv.scrollHeight 
+                }).then(canvas => {
                     const matrizImg = canvas.toDataURL('image/png');
                     
-                    // Añadir página de matriz
+                    // Añadir página de matriz en landscape
                     pdf.addPage('a4', 'landscape');
                     const newPW = pdf.internal.pageSize.getWidth();
                     const newPH = pdf.internal.pageSize.getHeight();
                     
-                    // Escalar imagen para que quepa en la página
+                    // Calcular proporciones
                     const imgRatio = canvas.width / canvas.height;
-                    let imgWidth = newPW - 10;
+                    const pageMargin = 8;
+                    const maxWidth = newPW - (pageMargin * 2);
+                    const maxHeight = newPH - (pageMargin * 2);
+                    
+                    let imgWidth = maxWidth;
                     let imgHeight = imgWidth / imgRatio;
                     
-                    if (imgHeight > newPH - 10) {
-                        imgHeight = newPH - 10;
+                    // Si la altura es muy grande, reducir ancho
+                    if (imgHeight > maxHeight) {
+                        imgHeight = maxHeight;
                         imgWidth = imgHeight * imgRatio;
                     }
                     
+                    // Centrar en la página
                     const xOffset = (newPW - imgWidth) / 2;
-                    const yOffset = 5;
+                    const yOffset = (newPH - imgHeight) / 2;
                     
                     pdf.addImage(matrizImg, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
                     document.body.removeChild(tempDiv);
                     pdf.save('organigrama_matriz.pdf');
-                    this.showToast('PDF descargado: Página 1 (organigrama) + Página 2 (matriz)', 'success');
+                    this.showToast('PDF descargado: Página 1 (organigrama) + Página 2 (matriz centrada)', 'success');
                 }).catch(err => {
                     console.error('Error generando PDF con matriz:', err);
                     document.body.removeChild(tempDiv);
