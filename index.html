@@ -523,6 +523,43 @@
             font-size: 0.88rem;
             line-height: 1.45;
         }
+        .faq-section { margin-top: 2rem; }
+        .faq-section h2 { font-size: 1.05rem; font-weight: 800; color: var(--color-primary-dark); margin-bottom: 1rem; letter-spacing: 0.01em; }
+        .faq-item {
+            border: 1px solid var(--color-border);
+            border-radius: 8px;
+            background: var(--color-surface);
+            margin-bottom: 0.6rem;
+            overflow: hidden;
+        }
+        .faq-question {
+            width: 100%;
+            text-align: left;
+            padding: 0.85rem 1rem;
+            background: none;
+            border: none;
+            cursor: pointer;
+            font-size: 0.92rem;
+            font-weight: 700;
+            color: var(--color-text);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 0.5rem;
+        }
+        .faq-question:hover { background: var(--color-primary-light); }
+        .faq-question .faq-arrow { font-size: 0.75rem; color: var(--color-muted); transition: transform 0.2s; flex-shrink: 0; }
+        .faq-item.open .faq-arrow { transform: rotate(180deg); }
+        .faq-answer {
+            display: none;
+            padding: 0 1rem 0.9rem 1rem;
+            font-size: 0.87rem;
+            color: var(--color-muted);
+            line-height: 1.6;
+            border-top: 1px solid var(--color-border);
+            padding-top: 0.75rem;
+        }
+        .faq-item.open .faq-answer { display: block; }
 
         /* Responsiveness */
         @media (max-width: 1024px) { .sidebar { width: 250px; } }
@@ -860,19 +897,130 @@
                 <div class="sheet-toolbar">
                     <div>
                         <div class="sheet-title">Instrucciones</div>
-                        <small style="color:var(--color-muted);">Guía visual rápida de uso.</small>
+                        <small style="color:var(--color-muted);">Guía de uso y preguntas frecuentes.</small>
                     </div>
                 </div>
-                <div class="sheet-wrap" style="padding:1.5rem;">
+                <div class="sheet-wrap" style="padding:1.5rem;max-width:900px;">
+
                     <div class="instructions-grid">
-                        <div class="instruction-step"><div class="instruction-icon">1</div><h3>Carga o edita datos</h3><p>Importa un archivo o trabaja directamente en Datos. Las columnas clave son Área, Subárea, Responsable y Negocio.</p></div>
-                        <div class="instruction-step"><div class="instruction-icon">2</div><h3>Organiza los datos</h3><p>Revisa y edita las columnas importadas desde la pestaña Datos antes de construir el lienzo.</p></div>
-                        <div class="instruction-step"><div class="instruction-icon">3</div><h3>Construye el lienzo</h3><p>Arrastra áreas, subáreas, responsables y secciones desde la izquierda. Las cajas se colocan donde las sueltes.</p></div>
-                        <div class="instruction-step"><div class="instruction-icon">4</div><h3>Añade secciones</h3><p>Pulsa Añadir sección, escribe el nombre y elige por encima de qué nivel debe ir: áreas, subáreas o una sección existente.</p></div>
-                        <div class="instruction-step"><div class="instruction-icon">5</div><h3>Conecta cajas</h3><p>Usa los puntos azules de arriba, abajo y laterales para sacar líneas desde el borde más claro y evitar cruces por el centro.</p></div>
-                        <div class="instruction-step"><div class="instruction-icon">6</div><h3>Asigna responsables</h3><p>Suelta un responsable sobre área, subárea o sección. Si eliges Negocio, aparecerá el selector de negocio.</p></div>
-                        <div class="instruction-step"><div class="instruction-icon">7</div><h3>Consulta Modelo Tricapa</h3><p>La vista agrupa Corporativo, Negocio y SGS, mostrando área, subárea y negocio junto a cada responsable.</p></div>
-                        <div class="instruction-step"><div class="instruction-icon">8</div><h3>Revisa la Matriz</h3><p>La matriz cruza los tres niveles contra las áreas y ordena los responsables por negocio dentro de cada bloque.</p></div>
+                        <div class="instruction-step"><div class="instruction-icon">1</div><h3>Importa tu Excel</h3><p>Pulsa <b>Importar Excel/Numbers</b> y sube tu archivo. Si tiene las columnas Sección, Área, Subárea, Responsable y Capa, el organigrama se construye automáticamente. Si tiene una pestaña "Negocios", también se cargan los tipos de negocio.</p></div>
+                        <div class="instruction-step"><div class="instruction-icon">2</div><h3>Añade elementos</h3><p>Usa el botón <b>+ Añadir nuevo</b> (esquina inferior derecha) para crear áreas, subáreas, responsables o secciones escribiendo solo el nombre. Aparecerán en la lista de la izquierda.</p></div>
+                        <div class="instruction-step"><div class="instruction-icon">3</div><h3>Arrastra al lienzo</h3><p>Desde la columna izquierda, arrastra los elementos que quieras al lienzo. Las cajas se colocan donde las sueltes. Usa <b>Auto-layout</b> para ordenarlas automáticamente.</p></div>
+                        <div class="instruction-step"><div class="instruction-icon">4</div><h3>Asigna responsables</h3><p>Suelta un responsable encima de un área o subárea ya colocada. Se abrirá un selector para elegir si lidera a nivel Corporativo, Negocio o SGS.</p></div>
+                        <div class="instruction-step"><div class="instruction-icon">5</div><h3>Modelo Tricapa</h3><p>La pestaña <b>Modelo tricapa</b> muestra la tabla de responsables cruzada con áreas y subáreas. Nivel 1 agrupa por área, Nivel 2 desglosa por subárea. El export siempre usa Nivel 2.</p></div>
+                        <div class="instruction-step"><div class="instruction-icon">6</div><h3>Modifica nombres</h3><p>Pulsa <b>✎ Modificar</b> (esquina inferior derecha), elige el tipo y el elemento, escribe el nuevo nombre y guarda. El cambio se aplica en el organigrama, la tabla de datos y el modelo tricapa.</p></div>
+                    </div>
+
+                    <div class="faq-section">
+                        <h2>Preguntas frecuentes</h2>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
+                                ¿Cómo preparo el Excel para que el organigrama se construya solo?
+                                <span class="faq-arrow">▼</span>
+                            </button>
+                            <div class="faq-answer">
+                                Tu archivo debe tener una pestaña con exactamente estas cinco columnas: <b>Sección</b>, <b>Área</b>, <b>Subárea</b>, <b>Responsable</b> y <b>Capa</b>. Cada fila es una combinación. Si un área tiene varios responsables, repite la fila con distinto nombre en la columna Responsable. Los valores válidos para Capa son <b>Corporativo</b>, <b>SGS</b> y <b>Negocios</b>. Si la celda de Responsable está vacía o pone "N/A", esa fila se ignora para los responsables pero el área y subárea sí se crean. Si quieres cargar los tipos de negocio, añade una segunda pestaña llamada <b>Negocios</b> con un nombre de negocio por fila.
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
+                                ¿Qué diferencia hay entre Área y Subárea?
+                                <span class="faq-arrow">▼</span>
+                            </button>
+                            <div class="faq-answer">
+                                Las <b>Áreas</b> son las unidades principales del organigrama (cajas azules grandes). Las <b>Subáreas</b> son unidades que dependen de un Área y se muestran por debajo de ella (cajas azul claro). En el Modelo tricapa, el Nivel 1 agrupa la información solo por Área, mientras que el Nivel 2 la desglosa también por Subárea.
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
+                                ¿Qué es una Sección?
+                                <span class="faq-arrow">▼</span>
+                            </button>
+                            <div class="faq-answer">
+                                Las <b>Secciones</b> son agrupadores que aparecen por encima, al mismo nivel o por debajo de las áreas en el lienzo. Sirven para organizar las áreas bajo un mismo paraguas (por ejemplo, una dirección general). En el Modelo tricapa, la sección de cada área aparece como cabecera de columna.
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
+                                ¿Qué significa Capa (Corporativo, SGS, Negocios)?
+                                <span class="faq-arrow">▼</span>
+                            </button>
+                            <div class="faq-answer">
+                                La <b>Capa</b> indica el nivel de liderazgo del responsable:<br>
+                                • <b>Corporativo</b> (azul oscuro): responsable a nivel de grupo, transversal a todos los negocios.<br>
+                                • <b>Negocios</b> (azul claro): responsable específico de una línea de negocio.<br>
+                                • <b>SGS</b> (naranja): responsable de la factoría de servicios compartidos.<br>
+                                En el Modelo tricapa cada capa ocupa una fila diferente de la tabla.
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
+                                He creado un elemento pero no aparece en el lienzo, ¿por qué?
+                                <span class="faq-arrow">▼</span>
+                            </button>
+                            <div class="faq-answer">
+                                Los elementos recién creados (desde <b>+ Añadir nuevo</b> o importados sin posición) aparecen en la <b>lista de la izquierda</b> pero no en el lienzo hasta que los arrastras. Esto es intencionado: tú decides qué elementos quieres mostrar y dónde. Una vez arrastrado, puedes reorganizarlo con el botón <b>Auto-layout</b>.
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
+                                ¿Cómo asigno un responsable a un área o subárea?
+                                <span class="faq-arrow">▼</span>
+                            </button>
+                            <div class="faq-answer">
+                                El área o subárea tiene que estar ya en el lienzo. Luego arrastra el responsable desde la columna de la izquierda y suéltalo encima de esa caja. Se abrirá un modal donde eliges la Capa (Corporativo, SGS o Negocios). Si eliges Negocios, aparece un segundo selector para elegir a qué negocio pertenece.
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
+                                ¿Puedo tener el mismo responsable en varias áreas o subáreas?
+                                <span class="faq-arrow">▼</span>
+                            </button>
+                            <div class="faq-answer">
+                                Sí. Puedes asignar el mismo nombre de responsable a distintas áreas o subáreas. En el Excel, basta con repetir la fila con el mismo nombre en Responsable pero distinta Área o Subárea. En el organigrama aparecerá una caja por cada asignación. En el Modelo tricapa, el nombre aparecerá en cada columna que le corresponda.
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
+                                ¿Cómo cambio el nombre de un área, subárea o responsable?
+                                <span class="faq-arrow">▼</span>
+                            </button>
+                            <div class="faq-answer">
+                                Pulsa el botón <b>✎ Modificar</b> en la esquina inferior derecha del organigrama. Elige el tipo (Área, Subárea, Responsable o Sección), selecciona el elemento concreto en el desplegable y escribe el nuevo nombre. Al pulsar <b>Guardar</b>, el cambio se propaga automáticamente al lienzo, a la tabla de Datos y al Modelo tricapa.
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
+                                ¿Cómo exporto el resultado?
+                                <span class="faq-arrow">▼</span>
+                            </button>
+                            <div class="faq-answer">
+                                Pulsa el botón <b>Exportar</b> en la barra de navegación superior. Puedes elegir entre:<br>
+                                • <b>2 imágenes JPG</b>: una con el organigrama y otra con la tabla del Modelo tricapa (Nivel 2).<br>
+                                • <b>PDF de 2 páginas</b>: la primera con el organigrama y la segunda con la tabla.<br>
+                                También puedes elegir si exportar con o sin los nombres de los responsables visibles.
+                            </div>
+                        </div>
+
+                        <div class="faq-item">
+                            <button class="faq-question" onclick="this.closest('.faq-item').classList.toggle('open')">
+                                ¿Los datos se guardan automáticamente?
+                                <span class="faq-arrow">▼</span>
+                            </button>
+                            <div class="faq-answer">
+                                Sí. Cada cambio que haces (mover una caja, asignar un responsable, renombrar un elemento…) se guarda automáticamente en el almacenamiento local de tu navegador. No necesitas pulsar ningún botón de guardar. Si cierras la pestaña y la vuelves a abrir, todo estará como lo dejaste. Ten en cuenta que si borras los datos del navegador o usas otro navegador/dispositivo, el trabajo no estará disponible.
+                            </div>
+                        </div>
+
                     </div>
                 </div>
             </div>
