@@ -1861,6 +1861,18 @@
             return filterExcluded(DataModel.areas);
         },
 
+        getSectionMatrixAreas(section, matrixAreas) {
+            if (!section || section.detached) return [];
+            const areaIds = new Set((this.getSectionTargetElements(section) || [])
+                .map(target => {
+                    if (target.type === 'area') return target.id;
+                    if (target.type === 'subarea') return target.parent || null;
+                    return null;
+                })
+                .filter(Boolean));
+            return matrixAreas.filter(area => areaIds.has(area.id));
+        },
+
         getSectionTargetLabel(target) {
             if (target === 'areas') return 'Áreas';
             if (target === 'subareas') return 'Subáreas';
@@ -2825,6 +2837,14 @@
                     </tr>`;
             };
             renderLevelCells.seen = {};
+            const renderSectionHeaderContent = (section) => {
+                const sectionResponsibles = assignedResponsibles
+                    .filter(r => r.attachedTo === section.id)
+                    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
+                const names = [...new Set(sectionResponsibles.map(r => r.name).filter(Boolean))];
+                const pills = names.length ? `<div style="margin-top:0.35rem;">${this.renderNamePills(names, section.color || RESPONSIBLE_SCOPE.corporativo.color, 99)}</div>` : '';
+                return `<div>${this.escapeHtml(section.name)}</div>${pills}`;
+            };
 
             const controls = `
                 <div style="padding:0.75rem;display:flex;align-items:center;gap:0.75rem;border-bottom:1px solid var(--color-border);background:var(--color-surface);">
@@ -2836,9 +2856,23 @@
                 </div>`;
 
             if (mode === 'nivel1') {
+                const hasAnySuperiorNivel1 = DataModel.superiors.some(section => this.getSectionMatrixAreas(section, areas).length);
                 container.innerHTML = controls + `
                 <table class="excel-table matrix-table" style="min-width:${Math.max(1000, 350 + areas.length * 260)}px;">
                     <thead>
+                        ${hasAnySuperiorNivel1 ? `<tr>
+                            <th colspan="2" class="matrix-stub-header"></th>
+                            ${DataModel.superiors.map(superior => {
+                                const sectionAreas = this.getSectionMatrixAreas(superior, areas);
+                                if (!sectionAreas.length) return '';
+                                const superiorBg = lightenColor(superior.color, 0.95);
+                                return `<th colspan="${sectionAreas.length}" class="matrix-section-header" style="background:${superiorBg};color:${superior.color};">${renderSectionHeaderContent(superior)}</th>`;
+                            }).join('')}
+                            ${areas.length > 0 && !areas.every(a => DataModel.superiors.some(s => this.getSectionMatrixAreas(s, areas).some(sa => sa.id === a.id))) ? (() => {
+                                const unassignedAreas = areas.filter(a => !DataModel.superiors.some(s => this.getSectionMatrixAreas(s, areas).some(sa => sa.id === a.id)));
+                                return `<th colspan="${unassignedAreas.length}" class="matrix-section-spacer"></th>`;
+                            })() : ''}
+                        </tr>` : ''}
                         <tr>
                             <th colspan="2" class="matrix-stub-header"></th>
                             ${areas.map(a => `<th class="matrix-area-header matrix-area-boundary">${this.escapeHtml(a.name)}</th>`).join('')}
@@ -2877,20 +2911,18 @@
                         ${hasAnySuperior ? `<tr>
                             <th rowspan="${headerRows}" colspan="2" class="matrix-stub-header"></th>
                             ${DataModel.superiors.map(superior => {
-                                const areaCount = superior.areas ? superior.areas.filter(aId => areas.some(a => a.id === aId)).length : 0;
-                                if (areaCount === 0) return '';
-                                const totalCols = superior.areas
-                                    .filter(aId => areas.some(a => a.id === aId))
-                                    .reduce((sum, aId) => {
-                                        const area = areas.find(a => a.id === aId);
+                                const sectionAreas = this.getSectionMatrixAreas(superior, areas);
+                                if (!sectionAreas.length) return '';
+                                const totalCols = sectionAreas
+                                    .reduce((sum, area) => {
                                         const sCount = DataModel.subareas.filter(s => s.parent === area.id && s.placed === true).length;
                                         return sum + (sCount > 0 ? sCount : 1);
                                     }, 0);
                                 const superiorBg = lightenColor(superior.color, 0.95);
-                                return `<th colspan="${totalCols}" class="matrix-section-header" style="background:${superiorBg};color:${superior.color};">${this.escapeHtml(superior.name)}</th>`;
+                                return `<th colspan="${totalCols}" class="matrix-section-header" style="background:${superiorBg};color:${superior.color};">${renderSectionHeaderContent(superior)}</th>`;
                             }).join('')}
-                            ${areas.length > 0 && !areas.every(a => DataModel.superiors.some(s => s.areas && s.areas.includes(a.id))) ? (() => {
-                                const unassignedAreas = areas.filter(a => !DataModel.superiors.some(s => s.areas && s.areas.includes(a.id)));
+                            ${areas.length > 0 && !areas.every(a => DataModel.superiors.some(s => this.getSectionMatrixAreas(s, areas).some(sa => sa.id === a.id))) ? (() => {
+                                const unassignedAreas = areas.filter(a => !DataModel.superiors.some(s => this.getSectionMatrixAreas(s, areas).some(sa => sa.id === a.id)));
                                 const totalCols = unassignedAreas.reduce((sum, area) => {
                                     const sCount = DataModel.subareas.filter(s => s.parent === area.id && s.placed === true).length;
                                     return sum + (sCount > 0 ? sCount : 1);
