@@ -205,6 +205,21 @@
             padding: 0.25rem;
         }
         .btn-small:hover { color: var(--color-primary); }
+        .tree-row.area .btn-small,
+        .tree-row.superior .btn-small {
+            color: rgba(255,255,255,0.95);
+            text-shadow: 0 1px 2px rgba(0,0,0,0.25);
+        }
+        .tree-row.area .btn-small:hover,
+        .tree-row.superior .btn-small:hover {
+            color: #FFFFFF;
+        }
+        .tree-row.responsible .btn-small {
+            color: #111827;
+        }
+        .tree-row.responsible .btn-small:hover {
+            color: #000000;
+        }
 
         /* Canvas Area */
         .canvas-area { flex: 1; background-color: var(--color-background); position: relative; overflow: hidden; display: flex; flex-direction: column; }
@@ -4367,6 +4382,7 @@
                 const point = this.toWorld(e);
                 const element = DataModel.getElementById(elementId);
                 if (element) {
+                    const wasPlaced = element.placed === true;
                     if (element.type === 'responsible') {
                         const target = this.hitTest(point.x, point.y, element.id);
                         if (target && target.type !== 'responsible') {
@@ -4380,8 +4396,14 @@
                         return;
                     }
                     const size = this.getBoxSize(element);
-                    element.x = point.x - size.w / 2;
-                    element.y = point.y - size.h / 2;
+                    if (!wasPlaced) {
+                        const center = this.getPaperCenter();
+                        element.x = center.x - size.w / 2;
+                        element.y = center.y - size.h / 2;
+                    } else {
+                        element.x = point.x - size.w / 2;
+                        element.y = point.y - size.h / 2;
+                    }
                     element.placed = true;
                     if (element.type === 'area') element.y = this.getAreaRowY();
                     if (element.type === 'subarea') {
