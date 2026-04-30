@@ -1626,12 +1626,6 @@
             return exp;
         },
 
-        createMatrixExportElement() {
-            const matrizContainer = document.getElementById('matriz-content');
-            if (!matrizContainer || !matrizContainer.querySelector('table')) return null;
-            return matrizContainer;
-        },
-
         exportImages() {
             this.buildExportCanvas().toBlob(blob => {
                 this.downloadFile(blob, 'organigrama.jpg');
@@ -1639,23 +1633,26 @@
             }, 'image/jpeg', 0.95);
 
             setTimeout(() => {
-                const matrizContainer = this.createMatrixExportElement();
-                if (!matrizContainer) {
+                const matrizContainer = document.getElementById('matriz-content');
+                if (!matrizContainer || !matrizContainer.querySelector('table')) {
                     this.showToast('Matriz no disponible', 'warning');
                     return;
                 }
 
                 const self = this;
-                window.html2canvas(matrizContainer, { 
+                const table = matrizContainer.querySelector('table');
+                window.html2canvas(table, { 
                     backgroundColor: '#FFFFFF', 
-                    scale: 1, 
+                    scale: 2,
                     useCORS: true,
                     allowTaint: true,
                     logging: false,
-                    ignoreElements: (element) => {
-                        return element.classList && (element.classList.contains('segmented-control') || element.classList.contains('sheet-toolbar'));
-                    }
+                    windowHeight: table.scrollHeight,
+                    windowWidth: table.scrollWidth
                 }).then(canvas => {
+                    if (canvas.width === 0 || canvas.height === 0) {
+                        throw new Error('Canvas vacío');
+                    }
                     canvas.toBlob(blob => {
                         self.downloadFile(blob, 'matriz.jpg');
                         self.showToast('Descargadas 2 imágenes JPG: organigrama y matriz', 'success');
@@ -1680,24 +1677,30 @@
             
             pdf.addImage(imgData, 'PNG', 0, 0, pW, pH);
             
-            const matrizContainer = this.createMatrixExportElement();
-            if (!matrizContainer) {
+            const matrizContainer = document.getElementById('matriz-content');
+            if (!matrizContainer || !matrizContainer.querySelector('table')) {
                 pdf.save('organigrama_matriz.pdf');
                 this.showToast('PDF descargado (sin matriz)', 'warning');
                 return;
             }
             
             const self = this;
-            window.html2canvas(matrizContainer, { 
+            
+            // Capturar solo la tabla para mejor calidad
+            const table = matrizContainer.querySelector('table');
+            window.html2canvas(table, { 
                 backgroundColor: '#FFFFFF', 
-                scale: 1, 
+                scale: 2,
                 useCORS: true,
                 allowTaint: true,
                 logging: false,
-                ignoreElements: (element) => {
-                    return element.classList && (element.classList.contains('segmented-control') || element.classList.contains('sheet-toolbar'));
-                }
+                windowHeight: table.scrollHeight,
+                windowWidth: table.scrollWidth
             }).then(canvas => {
+                if (canvas.width === 0 || canvas.height === 0) {
+                    throw new Error('Canvas vacío');
+                }
+                
                 const matrizImg = canvas.toDataURL('image/png');
                 
                 pdf.addPage('a4', 'landscape');
@@ -1705,11 +1708,11 @@
                 const newPH = pdf.internal.pageSize.getHeight();
                 
                 const imgRatio = canvas.width / canvas.height;
-                let imgWidth = newPW - 20;
+                let imgWidth = newPW - 40;
                 let imgHeight = imgWidth / imgRatio;
                 
-                if (imgHeight > newPH - 20) {
-                    imgHeight = newPH - 20;
+                if (imgHeight > newPH - 40) {
+                    imgHeight = newPH - 40;
                     imgWidth = imgHeight * imgRatio;
                 }
                 
@@ -1720,7 +1723,7 @@
                 pdf.save('organigrama_matriz.pdf');
                 self.showToast('PDF descargado: organigrama + matriz', 'success');
             }).catch(err => {
-                console.error('Error PDF matriz:', err);
+                console.error('Error captura matriz:', err);
                 pdf.save('organigrama_matriz.pdf');
                 self.showToast('PDF descargado (solo organigrama)', 'warning');
             });
