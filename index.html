@@ -2851,11 +2851,32 @@
                     </tr>`;
             };
             renderLevelCells.seen = {};
+            const personasForArea = (area) => DataModel.personas
+                .filter(p => (p.area === area.id || p.attachedTo === area.id) && !p.subarea)
+                .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
+
+            const renderAreaHeaderContent = (area) => {
+                const personas = personasForArea(area);
+                const names = [...new Set(personas.map(p => p.name).filter(Boolean))];
+                const pills = names.length
+                    ? `<div style="margin-top:0.4rem;display:flex;flex-wrap:wrap;justify-content:center;gap:0.2rem;">${
+                        names.map(n => `<span style="display:inline-block;padding:0.25rem 0.5rem;background:rgba(255,255,255,0.18);border:1px solid rgba(255,255,255,0.7);border-radius:4px;font-size:0.82rem;font-weight:600;color:#fff;line-height:1.2;">${this.escapeHtml(n)}</span>`).join('')
+                      }</div>`
+                    : '';
+                return `<div>${this.escapeHtml(area.name)}</div>${pills}`;
+            };
+
             const renderSectionHeaderContent = (section) => {
                 const sectionResponsibles = assignedResponsibles
                     .filter(r => r.attachedTo === section.id)
                     .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
-                const names = [...new Set(sectionResponsibles.map(r => r.name).filter(Boolean))];
+                const sectionPersonas = DataModel.personas
+                    .filter(p => p.attachedTo === section.id)
+                    .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
+                const names = [...new Set([
+                    ...sectionResponsibles.map(r => r.name),
+                    ...sectionPersonas.map(p => p.name)
+                ].filter(Boolean))];
                 const pills = names.length ? `<div style="margin-top:0.35rem;">${this.renderNamePills(names, section.color || RESPONSIBLE_SCOPE.corporativo.color, 99)}</div>` : '';
                 return `<div>${this.escapeHtml(section.name)}</div>${pills}`;
             };
@@ -2889,7 +2910,7 @@
                         </tr>` : ''}
                         <tr>
                             <th colspan="2" class="matrix-stub-header"></th>
-                            ${areas.map(a => `<th class="matrix-area-header matrix-area-boundary">${this.escapeHtml(a.name)}</th>`).join('')}
+                            ${areas.map(a => `<th class="matrix-area-header matrix-area-boundary">${renderAreaHeaderContent(a)}</th>`).join('')}
                         </tr>
                     </thead>
                     <tbody>
@@ -2949,7 +2970,7 @@
                             ${areas.map(area => {
                                 const subareaCount = DataModel.subareas.filter(s => s.parent === area.id && s.placed === true).length;
                                 const count = subareaCount > 0 ? subareaCount : 1;
-                                return `<th colspan="${count}" class="matrix-area-header matrix-area-boundary">${this.escapeHtml(area.name)}</th>`;
+                                return `<th colspan="${count}" class="matrix-area-header matrix-area-boundary">${renderAreaHeaderContent(area)}</th>`;
                             }).join('')}
                         </tr>
                         <tr>
