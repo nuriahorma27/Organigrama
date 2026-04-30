@@ -1567,8 +1567,18 @@
             menu.innerHTML = `
                 <div class="modal-content">
                     <div class="modal-header">📤 Exportar</div>
-                    <button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="app.exportImages();app.closeModal('${modalId}')">🖼️ 2 Imágenes JPG (Organigrama + Matriz)</button>
-                    <button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="app.exportPDFWithMatrix();app.closeModal('${modalId}')">📑 PDF (2 páginas: Organigrama + Matriz)</button>
+                    <div style="margin-bottom:1rem;">
+                        <div style="font-size:0.85rem;font-weight:600;color:var(--color-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.6rem;">Nombres de responsables en el organigrama</div>
+                        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;margin-bottom:0.4rem;">
+                            <input type="radio" name="export-names" value="con" checked style="accent-color:var(--color-primary);"> Con nombres
+                        </label>
+                        <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
+                            <input type="radio" name="export-names" value="sin"> Sin nombres
+                        </label>
+                    </div>
+                    <hr style="margin-bottom:1rem;border:none;border-top:1px solid var(--color-border);">
+                    <button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="app.exportImages(document.querySelector('input[name=export-names]:checked').value==='sin');app.closeModal('${modalId}')">🖼️ 2 Imágenes JPG (Organigrama + Matriz)</button>
+                    <button class="btn btn-secondary" style="width:100%;margin-bottom:0.5rem;" onclick="app.exportPDFWithMatrix(document.querySelector('input[name=export-names]:checked').value==='sin');app.closeModal('${modalId}')">📑 PDF (2 páginas: Organigrama + Matriz)</button>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" onclick="app.closeModal('${modalId}')">Cancelar</button>
                     </div>
@@ -1577,7 +1587,7 @@
             document.body.appendChild(menu);
         },
 
-        buildExportCanvas() {
+        buildExportCanvas(hideNames = false) {
             const canvasObj = this.canvas;
             const bounds = canvasObj.getContentBounds();
             const exp = document.createElement('canvas');
@@ -1593,7 +1603,8 @@
                 offsetX: canvasObj.offsetX,
                 offsetY: canvasObj.offsetY,
                 scale: canvasObj.scale,
-                exporting: canvasObj.exporting
+                exporting: canvasObj.exporting,
+                hideNames: canvasObj.hideNames
             };
             canvasObj.el = exp;
             canvasObj.ctx = exp.getContext('2d');
@@ -1601,6 +1612,7 @@
             canvasObj.offsetY = bounds ? (exp.height - bounds.h * scale) / 2 - bounds.minY * scale : 0;
             canvasObj.scale = scale;
             canvasObj.exporting = true;
+            canvasObj.hideNames = hideNames;
             canvasObj.render();
             canvasObj.el = prev.el;
             canvasObj.ctx = prev.ctx;
@@ -1608,6 +1620,7 @@
             canvasObj.offsetY = prev.offsetY;
             canvasObj.scale = prev.scale;
             canvasObj.exporting = prev.exporting;
+            canvasObj.hideNames = prev.hideNames;
             canvasObj.render();
             // Composite sobre fondo blanco para exportaciones JPG/PDF
             const white = document.createElement('canvas');
@@ -1620,8 +1633,8 @@
             return white;
         },
 
-        exportImages() {
-            this.buildExportCanvas().toBlob(blob => {
+        exportImages(hideNames = false) {
+            this.buildExportCanvas(hideNames).toBlob(blob => {
                 this.downloadFile(blob, 'organigrama.jpg');
                 this.showToast('Organigrama descargado...', 'success');
             }, 'image/jpeg', 0.95);
@@ -1662,9 +1675,9 @@
             }, 400);
         },
 
-        exportPDFWithMatrix() {
+        exportPDFWithMatrix(hideNames = false) {
             const { jsPDF } = window.jspdf;
-            const exp = this.buildExportCanvas();
+            const exp = this.buildExportCanvas(hideNames);
             const imgData = exp.toDataURL('image/png');
             const W = exp.width, H = exp.height;
             const orientation = W >= H ? 'landscape' : 'portrait';
@@ -4185,23 +4198,25 @@
                     ctx.fillStyle = headerColor;
                     ctx.fill();
 
-                    // Header label (área / subárea)
-                    ctx.fillStyle = 'rgba(255,255,255,0.9)';
-                    ctx.font = '10px -apple-system, Arial, sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    let label = '';
-                    if (area && subarea) label = `${area.name} › ${subarea.name}`;
-                    else if (area) label = area.name;
-                    else label = 'Sin área';
-                    ctx.fillText(this.wrapText(label, W - 16), x + W / 2, y + HEADER_H / 2);
+                    if (!this.hideNames) {
+                        // Header label (área / subárea)
+                        ctx.fillStyle = 'rgba(255,255,255,0.9)';
+                        ctx.font = '10px -apple-system, Arial, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        let label = '';
+                        if (area && subarea) label = `${area.name} › ${subarea.name}`;
+                        else if (area) label = area.name;
+                        else label = 'Sin área';
+                        ctx.fillText(this.wrapText(label, W - 16), x + W / 2, y + HEADER_H / 2);
 
-                    // Responsible name
-                    ctx.fillStyle = darkenColor(headerColor, 0.5);
-                    ctx.font = 'bold 13px -apple-system, Arial, sans-serif';
-                    ctx.textBaseline = 'middle';
-                    const business = element.business ? ` - ${element.business}` : '';
-                    this.drawCenteredLines(element.name + business, x + W / 2, y + HEADER_H + (H - HEADER_H) / 2, W - 16, 14, 3);
+                        // Responsible name
+                        ctx.fillStyle = darkenColor(headerColor, 0.5);
+                        ctx.font = 'bold 13px -apple-system, Arial, sans-serif';
+                        ctx.textBaseline = 'middle';
+                        const business = element.business ? ` - ${element.business}` : '';
+                        this.drawCenteredLines(element.name + business, x + W / 2, y + HEADER_H + (H - HEADER_H) / 2, W - 16, 14, 3);
+                    }
 
                 } else {
                     // Person
@@ -4230,20 +4245,22 @@
                     this.roundRect(x, y, W, 4, [4, 4, 0, 0]);
                     ctx.fill();
 
-                    // Name
-                    ctx.fillStyle = '#1F2D3D';
-                    ctx.font = 'bold 12px -apple-system, Arial, sans-serif';
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-                    ctx.fillText(this.wrapText(element.name, W - 16), x + W / 2, y + H / 2 - 4);
+                    if (!this.hideNames) {
+                        // Name
+                        ctx.fillStyle = '#1F2D3D';
+                        ctx.font = 'bold 12px -apple-system, Arial, sans-serif';
+                        ctx.textAlign = 'center';
+                        ctx.textBaseline = 'middle';
+                        ctx.fillText(this.wrapText(element.name, W - 16), x + W / 2, y + H / 2 - 4);
 
-                    // Responsible name below
-                    if (element.responsible) {
-                        const resp = DataModel.responsibles.find(r => r.id === element.responsible);
-                        if (resp) {
-                            ctx.font = '10px -apple-system, Arial, sans-serif';
-                            ctx.fillStyle = '#6B7C93';
-                            ctx.fillText(this.wrapText('→ ' + resp.name, W - 16), x + W / 2, y + H / 2 + 12);
+                        // Responsible name below
+                        if (element.responsible) {
+                            const resp = DataModel.responsibles.find(r => r.id === element.responsible);
+                            if (resp) {
+                                ctx.font = '10px -apple-system, Arial, sans-serif';
+                                ctx.fillStyle = '#6B7C93';
+                                ctx.fillText(this.wrapText('→ ' + resp.name, W - 16), x + W / 2, y + H / 2 + 12);
+                            }
                         }
                     }
                 }
@@ -4252,6 +4269,7 @@
             },
 
             drawAssignmentLabel(element, x, y, w) {
+                if (this.hideNames) return;
                 const entries = [
                     ...DataModel.getAssignedResponsibles(element).map(r => ({
                         text: r.business ? `${r.name} - ${r.business}` : r.name,
