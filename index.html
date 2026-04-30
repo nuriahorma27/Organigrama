@@ -1424,6 +1424,7 @@
             reader.onload = (event) => {
                 try {
                     let data = [];
+                    let businessesFromSheet = [];
                     const fileName = file.name.toLowerCase();
                     if (fileName.endsWith('.csv')) {
                         data = this.parseCSV(event.target.result);
@@ -1432,6 +1433,10 @@
                         const sheetName = wb.SheetNames.find(n => n.toLowerCase().includes('datos')) || wb.SheetNames[0];
                         const sheet = wb.Sheets[sheetName];
                         data = this.parseExcelSheet(sheet);
+                        const negocioSheetName = wb.SheetNames.find(n => n.toLowerCase().includes('negocio'));
+                        if (negocioSheetName) {
+                            businessesFromSheet = this.parseBusinessSheet(wb.Sheets[negocioSheetName]);
+                        }
                     } else {
                         this.showToast('Formato no soportado', 'error');
                         return;
@@ -1442,7 +1447,7 @@
                     }
                     this.loadDatosData(data);
                     if (this.isOrganigramaDirectoFormat(Object.keys(data[0] || {}))) {
-                        this.importOrganigramaDirecto(data);
+                        this.importOrganigramaDirecto(data, businessesFromSheet);
                         return;
                     }
                     this.showColumnMapping(data);
@@ -1476,6 +1481,21 @@
                 data.push(obj);
             }
             return data;
+        },
+
+        parseBusinessSheet(sheet) {
+            const raw = XLSX.utils.sheet_to_json(sheet, { header: 1, defval: '' });
+            if (!raw.length) return [];
+            // Accept either: single column with no header, or a column whose header contains "negocio"
+            const firstRow = raw[0].map(c => String(c).trim());
+            const hasHeader = firstRow.some(c => this.normalizeHeader(c).includes('negocio'));
+            const startRow = hasHeader ? 1 : 0;
+            const colIdx = hasHeader
+                ? firstRow.findIndex(c => this.normalizeHeader(c).includes('negocio'))
+                : 0;
+            return raw.slice(startRow)
+                .map(r => String(r[colIdx] || '').trim())
+                .filter(Boolean);
         },
 
         showColumnMapping(data) {
@@ -2287,7 +2307,7 @@
             return hasCapa && hasSeccion && hasArea;
         },
 
-        importOrganigramaDirecto(data) {
+        importOrganigramaDirecto(data, businessesFromSheet = []) {
             const headers = Object.keys(data[0] || {});
             const findCol = (...names) => headers.find(h => names.includes(this.normalizeHeader(h))) || null;
 
@@ -2306,6 +2326,7 @@
             DataModel.areas       = DataModel.areas.filter(e => !e.fromExcel);
             DataModel.subareas    = DataModel.subareas.filter(e => !e.fromExcel);
             DataModel.responsibles = DataModel.responsibles.filter(e => !e.fromExcel);
+            DataModel.businesses  = businessesFromSheet;
 
             const sectionColorPalette = ['#003B73', '#4A235A', '#00695C', '#5D4037', '#E8630A'];
             let sectionColorIdx = 0;
@@ -2389,9 +2410,10 @@
             this.render();
             this.renderStructureTree();
             this.switchView('organigrama');
+            const negMsg = DataModel.businesses.length ? `, ${DataModel.businesses.length} negocios` : '';
             this.showToast(
                 `Organigrama creado: ${DataModel.superiors.length} secciones, ${DataModel.areas.length} áreas, ` +
-                `${DataModel.subareas.length} subáreas, ${DataModel.responsibles.length} responsables`,
+                `${DataModel.subareas.length} subáreas, ${DataModel.responsibles.length} responsables${negMsg}`,
                 'success'
             );
         },
@@ -2658,6 +2680,7 @@
                 if (value) names.add(value);
             });
             DataModel.responsibles.forEach(r => { if (r.business) names.add(r.business); });
+            (DataModel.businesses || []).forEach(b => { if (b) names.add(b); });
             return [...names].sort((a, b) => a.localeCompare(b, 'es'));
         },
 
