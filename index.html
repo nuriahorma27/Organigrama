@@ -104,8 +104,7 @@
             overscroll-behavior: contain;
         }
         .sidebar-section.sidebar-fill .tree-panel {
-            flex: 1;
-            min-height: 0;
+            height: auto;
         }
         .sidebar-title {
             font-size: 0.85rem;
@@ -164,15 +163,14 @@
         .tree-row.responsible { padding-left: 1.35rem; font-size: 0.78rem; }
         .tree-row .tree-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
         .tree-empty { color: var(--color-muted); font-size: 0.78rem; padding: 0.45rem 0.55rem; }
-        .structure-columns { display: grid; grid-template-columns: 1fr; gap: 0.65rem; min-height: 0; }
+        .structure-columns { display: grid; grid-template-columns: 1fr; gap: 0.65rem; }
         .structure-column {
             border: 1px solid var(--color-border);
             border-radius: 8px;
-            overflow: hidden;
+            overflow: visible;
             background: var(--color-surface);
             display: flex;
             flex-direction: column;
-            min-height: 0;
         }
         .structure-column-title {
             padding: 0.45rem 0.65rem;
@@ -191,10 +189,10 @@
             font-size: 0.76rem;
         }
         .structure-column-list {
-            height: 188px;
+            height: 150px;
             overflow-y: auto;
-            min-height: 0;
             border-top: 1px solid var(--color-border);
+            border-radius: 0 0 8px 8px;
         }
         .btn-small {
             background: none;
@@ -1628,106 +1626,99 @@
                 this.showToast('Organigrama descargado...', 'success');
             }, 'image/jpeg', 0.95);
 
+            const offscreen = document.createElement('div');
+            offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;z-index:-1;';
+            document.body.appendChild(offscreen);
+            this.renderMatrizViewInto(offscreen);
+
+            const self = this;
             setTimeout(() => {
-                const matrizContainer = document.getElementById('matriz-content');
-                if (!matrizContainer || !matrizContainer.querySelector('table')) {
-                    this.showToast('Matriz no disponible', 'warning');
+                const table = offscreen.querySelector('table');
+                if (!table) {
+                    offscreen.remove();
+                    self.showToast('Organigrama descargado. Matriz no disponible.', 'warning');
                     return;
                 }
-
-                const self = this;
-                const table = matrizContainer.querySelector('table');
-                window.html2canvas(table, { 
-                    backgroundColor: '#FFFFFF', 
+                window.html2canvas(table, {
+                    backgroundColor: '#FFFFFF',
                     scale: 2,
                     useCORS: true,
                     allowTaint: true,
                     logging: false,
-                    delay: 500,
                     windowHeight: table.scrollHeight,
                     windowWidth: table.scrollWidth
                 }).then(canvas => {
-                    if (canvas.width === 0 || canvas.height === 0) {
-                        throw new Error('Canvas vacío');
-                    }
+                    offscreen.remove();
+                    if (canvas.width === 0 || canvas.height === 0) throw new Error('Canvas vacío');
                     canvas.toBlob(blob => {
                         self.downloadFile(blob, 'matriz.jpg');
                         self.showToast('Descargadas 2 imágenes JPG: organigrama y matriz', 'success');
                     }, 'image/jpeg', 0.95);
                 }).catch(err => {
+                    offscreen.remove();
                     console.error('Error matriz JPG:', err);
                     self.showToast('Organigrama descargado. Matriz: error.', 'warning');
                 });
-            }, 800);
+            }, 400);
         },
 
         exportPDFWithMatrix() {
-            this.renderMatrizView();
             const { jsPDF } = window.jspdf;
             const exp = this.buildExportCanvas();
             const imgData = exp.toDataURL('image/png');
             const W = exp.width, H = exp.height;
             const orientation = W >= H ? 'landscape' : 'portrait';
-            
+
             const pdf = new jsPDF({ orientation, unit: 'px', format: [W, H], hotfixes: ['px_scaling'] });
             const pW = pdf.internal.pageSize.getWidth();
             const pH = pdf.internal.pageSize.getHeight();
-            
             pdf.addImage(imgData, 'PNG', 0, 0, pW, pH);
-            
-            const matrizContainer = document.getElementById('matriz-content');
-            if (!matrizContainer || !matrizContainer.querySelector('table')) {
-                pdf.save('organigrama_matriz.pdf');
-                this.showToast('PDF descargado (sin matriz)', 'warning');
-                return;
-            }
-            
+
+            // Renderizar la matriz en un contenedor visible fuera de pantalla
+            // para que html2canvas pueda capturarlo (no funciona con display:none)
+            const offscreen = document.createElement('div');
+            offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;z-index:-1;';
+            document.body.appendChild(offscreen);
+            this.renderMatrizViewInto(offscreen);
+
             const self = this;
-            
-            // Esperar a que renderice antes de capturar
             setTimeout(() => {
-                const table = matrizContainer.querySelector('table');
-                window.html2canvas(table, { 
-                    backgroundColor: '#FFFFFF', 
+                const table = offscreen.querySelector('table');
+                if (!table) {
+                    offscreen.remove();
+                    pdf.save('organigrama_matriz.pdf');
+                    self.showToast('PDF descargado (sin matriz)', 'warning');
+                    return;
+                }
+                window.html2canvas(table, {
+                    backgroundColor: '#FFFFFF',
                     scale: 2,
                     useCORS: true,
                     allowTaint: true,
                     logging: false,
-                    delay: 500,
                     windowHeight: table.scrollHeight,
                     windowWidth: table.scrollWidth
                 }).then(canvas => {
-                    if (canvas.width === 0 || canvas.height === 0) {
-                        throw new Error('Canvas vacío');
-                    }
-                    
+                    offscreen.remove();
+                    if (canvas.width === 0 || canvas.height === 0) throw new Error('Canvas vacío');
                     const matrizImg = canvas.toDataURL('image/png');
-                    
                     pdf.addPage('a4', 'landscape');
                     const newPW = pdf.internal.pageSize.getWidth();
                     const newPH = pdf.internal.pageSize.getHeight();
-                    
                     const imgRatio = canvas.width / canvas.height;
                     let imgWidth = newPW - 40;
                     let imgHeight = imgWidth / imgRatio;
-                    
-                    if (imgHeight > newPH - 40) {
-                        imgHeight = newPH - 40;
-                        imgWidth = imgHeight * imgRatio;
-                    }
-                    
-                    const xOffset = (newPW - imgWidth) / 2;
-                    const yOffset = (newPH - imgHeight) / 2;
-                    
-                    pdf.addImage(matrizImg, 'PNG', xOffset, yOffset, imgWidth, imgHeight);
+                    if (imgHeight > newPH - 40) { imgHeight = newPH - 40; imgWidth = imgHeight * imgRatio; }
+                    pdf.addImage(matrizImg, 'PNG', (newPW - imgWidth) / 2, (newPH - imgHeight) / 2, imgWidth, imgHeight);
                     pdf.save('organigrama_matriz.pdf');
                     self.showToast('PDF descargado: organigrama + matriz', 'success');
                 }).catch(err => {
+                    offscreen.remove();
                     console.error('Error captura matriz:', err);
                     pdf.save('organigrama_matriz.pdf');
                     self.showToast('PDF descargado (solo organigrama)', 'warning');
                 });
-            }, 200);
+            }, 300);
         },
 
         exportPNG() {
@@ -2779,9 +2770,17 @@
             this.showToast(`Subárea "${subarea.name}" asignada a "${area ? area.name : 'área'}"`, 'success');
         },
 
+        renderMatrizViewInto(container) {
+            this._renderMatrizViewCore(container);
+        },
+
         renderMatrizView() {
             const container = document.getElementById('matriz-content');
             if (!container) return;
+            this._renderMatrizViewCore(container);
+        },
+
+        _renderMatrizViewCore(container) {
             this.normalizeAssignedDisplayState();
             const assignedResponsibles = DataModel.responsibles.filter(r => this.isResponsibleAssigned(r));
             const assignedAreaIds = new Set(assignedResponsibles.map(r => this.getResponsibleAreaId(r)).filter(Boolean));
