@@ -576,7 +576,7 @@
             color: white;
             border-bottom: none;
         }
-        .excel-table th:first-child, .excel-table td:first-child {
+        .excel-table th:first-child {
             width: 46px;
             text-align: center;
             background: var(--color-background);
@@ -2843,7 +2843,7 @@
                 return `
                     <tr style="border-top:${showLevel ? `3px solid ${row.color}` : '1px dashed var(--color-border)'};">
                         ${showLevel ? `<td rowspan="${levelCounts[row.level]}" style="min-width:190px;text-align:center;vertical-align:middle;background:${row.color};color:white;font-weight:900;font-size:1.28rem;line-height:1.15;padding:1.2rem;">${this.escapeHtml(row.level)}</td>` : ''}
-                        <td style="min-width:220px;background:${row.bg};color:${row.color};font-weight:900;font-size:1.15rem;text-align:left;padding:1rem 1.25rem;">${this.escapeHtml(row.entity)}</td>
+                        <td style="min-width:220px;background:${row.bg};color:${row.color};font-weight:900 !important;font-size:1.15rem;text-align:left;padding:1rem 1.25rem;">${this.escapeHtml(row.entity)}</td>
                         ${cellsHtml}
                     </tr>`;
             };
