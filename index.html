@@ -2864,8 +2864,13 @@
                     </tr>`;
             };
             renderLevelCells.seen = {};
+            const allSubareaIds = new Set(DataModel.subareas.map(s => s.id));
             const personasForArea = (area) => DataModel.personas
-                .filter(p => (p.area === area.id || p.attachedTo === area.id) && !p.subarea)
+                .filter(p => {
+                    if (p.subarea) return false;
+                    if (allSubareaIds.has(p.attachedTo)) return false;
+                    return p.area === area.id || p.attachedTo === area.id;
+                })
                 .sort((a, b) => (a.name || '').localeCompare(b.name || '', 'es'));
 
             const renderAreaHeaderContent = (area) => {
