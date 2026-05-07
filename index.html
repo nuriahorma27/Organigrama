@@ -3753,7 +3753,7 @@
                 return s === 'corporativo' ? 'Corp.' : s === 'negocio' ? `Neg.${r.business ? ' ' + r.business : ''}` : 'SGS';
             };
             const options = sameNameAssigned.map(r =>
-                `<option value="${r.id}">${this.escapeHtml(getBoxName(r))} — ${getScopeLabel(r)}</option>`
+                `<option value="${r.id}" ${r.id === responsibleId ? 'selected' : ''}>${this.escapeHtml(getBoxName(r))} — ${getScopeLabel(r)}</option>`
             ).join('');
             const modal = document.createElement('div');
             modal.className = 'modal active';
@@ -3765,8 +3765,8 @@
                         <b>${this.escapeHtml(responsible.name)}</b> aparece en varias cajas. ¿De cuál lo quieres quitar?
                     </p>
                     <select id="unassign-box-select" style="width:100%;padding:0.55rem;border:1px solid var(--color-border);border-radius:4px;margin-bottom:1rem;font-size:0.93rem;">
-                        <option value="all">Todas las cajas</option>
                         ${options}
+                        <option value="all">— Todas las cajas —</option>
                     </select>
                     <div class="modal-footer">
                         <button class="btn btn-secondary" onclick="app.closeModal('${modalId}')">Cancelar</button>
