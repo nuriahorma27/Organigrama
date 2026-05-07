@@ -621,44 +621,53 @@
         .excel-table td { vertical-align: top; }
         .matrix-table { table-layout: auto; width: max-content; min-width: 100%; }
         .matrix-table th {
-            position: static;
+            position: sticky;
+            top: 0;
+            z-index: 4;
         }
         .matrix-table th, .matrix-table td {
             white-space: normal;
             overflow-wrap: anywhere;
-            line-height: 1.25;
+            line-height: 1.2;
         }
         .matrix-stub-header {
             background: var(--color-surface) !important;
             color: transparent !important;
             border-bottom: 2px solid var(--color-border);
+            position: sticky !important;
+            left: 0;
+            top: 0;
+            z-index: 8 !important;
         }
         .matrix-area-header {
             background: var(--color-primary-dark) !important;
             color: white !important;
             text-align: center;
             vertical-align: middle;
-            font-weight: 900;
-            font-size: 1.08rem;
-            min-width: 250px;
-            padding: 1rem;
+            font-weight: 800;
+            font-size: 0.88rem;
+            min-width: 160px;
+            max-width: 200px;
+            padding: 0.6rem 0.5rem;
         }
         .matrix-subarea-header {
             background: var(--color-primary-light) !important;
             color: var(--color-primary-dark) !important;
             text-align: center;
             vertical-align: middle;
-            font-weight: 800;
-            font-size: 1rem;
-            min-width: 250px;
-            padding: 0.95rem;
+            font-weight: 700;
+            font-size: 0.82rem;
+            min-width: 140px;
+            max-width: 180px;
+            padding: 0.55rem 0.4rem;
         }
         .matrix-section-header {
             text-align: center;
             vertical-align: middle;
-            font-weight: 900;
-            font-size: 1.02rem;
+            font-weight: 800;
+            font-size: 0.88rem;
             border-bottom: 1px solid var(--color-border);
+            padding: 0.5rem;
         }
         .matrix-section-spacer {
             background: var(--color-surface) !important;
@@ -668,26 +677,44 @@
         .matrix-name-pill {
             display: inline-block;
             max-width: 100%;
-            margin: 0.15rem 0.2rem 0.15rem 0;
-            padding: 0.45rem 0.65rem;
+            margin: 0.1rem 0.15rem 0.1rem 0;
+            padding: 0.3rem 0.45rem;
             border: 1px solid currentColor;
             background: #FFFFFF;
-            border-radius: 4px;
-            font-weight: 650;
+            border-radius: 3px;
+            font-weight: 600;
             color: #1F2D3D;
-            line-height: 1.25;
-            font-size: 0.95rem;
+            line-height: 1.2;
+            font-size: 0.82rem;
             white-space: normal;
             overflow-wrap: anywhere;
         }
         .matrix-area-boundary {
-            border-left: 4px solid #FFFFFF !important;
+            border-left: 3px solid #FFFFFF !important;
         }
         .matrix-area-cell {
-            border-left: 4px solid #FFFFFF !important;
+            border-left: 3px solid #FFFFFF !important;
         }
         .matrix-subarea-boundary {
             border-left: 1px solid #CBD5E1 !important;
+        }
+        /* Columnas fijas (nivel y entidad) */
+        .matrix-col-level {
+            position: sticky !important;
+            left: 0;
+            z-index: 3;
+            min-width: 90px !important;
+            max-width: 110px;
+        }
+        .matrix-col-entity {
+            position: sticky !important;
+            left: 100px;
+            z-index: 3;
+            min-width: 120px !important;
+            max-width: 160px;
+        }
+        .matrix-col-level, .matrix-col-entity {
+            font-size: 0.88rem !important;
         }
         .cell-input {
             width: 100%;
@@ -823,6 +850,10 @@
 
                 <div class="canvas-area">
                     <div class="canvas-toolbar">
+                        <div class="toolbar-group" aria-label="Historial">
+                            <button class="toolbar-button wide" onclick="app.undo()" title="Deshacer (Ctrl+Z)">↩ Deshacer</button>
+                            <button class="toolbar-button wide" onclick="app.redo()" title="Rehacer (Ctrl+Y)">Rehacer ↪</button>
+                        </div>
                         <div class="toolbar-group" aria-label="Zoom">
                             <button class="toolbar-button" onclick="app.canvas.zoomOut()" title="Alejar">−</button>
                             <button class="toolbar-button" onclick="app.canvas.zoomIn()" title="Acercar">+</button>
@@ -1539,6 +1570,9 @@
         _importHeaders: [],
         _newSectionPosition: 'above',
         pendingResponsibleAssignment: null,
+        historyStack: [],
+        redoStack: [],
+        _lastSnapshot: null,
 
         initBoards() {
             const emptyData = () => ({
@@ -1632,6 +1666,7 @@
 
         init() {
             this.load();
+            this._lastSnapshot = JSON.stringify(DataModel.toJSON());
             this.updateBoardButtons();
             this.render();
             this.attachEventListeners();
@@ -1665,6 +1700,10 @@
             const wrapper = document.getElementById('canvas-wrapper');
             wrapper.addEventListener('drop', (e) => this.canvas.handleDrop(e));
             wrapper.addEventListener('dragover', (e) => e.preventDefault());
+            document.addEventListener('keydown', (e) => {
+                if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); this.undo(); }
+                if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); this.redo(); }
+            });
         },
 
         // ============================================
@@ -1875,10 +1914,10 @@
                     <div style="margin-bottom:1rem;">
                         <div style="font-size:0.85rem;font-weight:600;color:var(--color-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:0.6rem;">Nombres de responsables en el organigrama</div>
                         <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;margin-bottom:0.4rem;">
-                            <input type="radio" name="export-names" value="con" checked style="accent-color:var(--color-primary);"> Con nombres
+                            <input type="radio" name="export-names" value="con" checked style="accent-color:var(--color-primary);"> Con nombres (organigrama + modelo tricapa)
                         </label>
                         <label style="display:flex;align-items:center;gap:0.5rem;cursor:pointer;">
-                            <input type="radio" name="export-names" value="sin"> Sin nombres
+                            <input type="radio" name="export-names" value="sin"> Sin nombres (solo organigrama)
                         </label>
                     </div>
                     <hr style="margin-bottom:1rem;border:none;border-top:1px solid var(--color-border);">
@@ -1941,8 +1980,14 @@
         exportImages(hideNames = false) {
             this.buildExportCanvas(hideNames).toBlob(blob => {
                 this.downloadFile(blob, 'organigrama.jpg');
+                if (hideNames) {
+                    this.showToast('Organigrama descargado (sin nombres)', 'success');
+                    return;
+                }
                 this.showToast('Organigrama descargado...', 'success');
             }, 'image/jpeg', 0.95);
+
+            if (hideNames) return;
 
             const offscreen = document.createElement('div');
             offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;z-index:-1;';
@@ -1992,8 +2037,12 @@
             const pH = pdf.internal.pageSize.getHeight();
             pdf.addImage(imgData, 'PNG', 0, 0, pW, pH);
 
-            // Renderizar la matriz en un contenedor visible fuera de pantalla
-            // para que html2canvas pueda capturarlo (no funciona con display:none)
+            if (hideNames) {
+                pdf.save('organigrama.pdf');
+                this.showToast('PDF descargado (solo organigrama, sin nombres)', 'success');
+                return;
+            }
+
             const offscreen = document.createElement('div');
             offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;background:#fff;z-index:-1;';
             document.body.appendChild(offscreen);
@@ -3428,9 +3477,9 @@
                 const showLevel = !renderLevelCells.seen[row.level];
                 renderLevelCells.seen[row.level] = true;
                 return `
-                    <tr style="border-top:${showLevel ? `3px solid ${row.color}` : '1px dashed var(--color-border)'};">
-                        ${showLevel ? `<td rowspan="${levelCounts[row.level]}" style="min-width:190px;text-align:center;vertical-align:middle;background:${row.color};color:white;font-weight:900;font-size:1.28rem;line-height:1.15;padding:1.2rem;">${this.escapeHtml(row.level)}</td>` : ''}
-                        <td style="min-width:220px;background:${row.bg};color:${row.color};font-weight:900 !important;font-size:1.15rem;text-align:left;padding:1rem 1.25rem;">${this.escapeHtml(row.entity)}</td>
+                    <tr style="border-top:${showLevel ? `2px solid ${row.color}` : '1px dashed var(--color-border)'};">
+                        ${showLevel ? `<td rowspan="${levelCounts[row.level]}" class="matrix-col-level" style="text-align:center;vertical-align:middle;background:${row.color};color:white;font-weight:800;font-size:0.9rem;line-height:1.15;padding:0.7rem 0.5rem;">${this.escapeHtml(row.level)}</td>` : ''}
+                        <td class="matrix-col-entity" style="background:${row.bg};color:${row.color};font-weight:800;font-size:0.88rem;text-align:left;padding:0.6rem 0.75rem;">${this.escapeHtml(row.entity)}</td>
                         ${cellsHtml}
                     </tr>`;
             };
@@ -3482,7 +3531,7 @@
             if (mode === 'nivel1') {
                 const hasAnySuperiorNivel1 = DataModel.superiors.some(section => this.getSectionMatrixAreas(section, areas).length);
                 container.innerHTML = controls + `
-                <table class="excel-table matrix-table" style="min-width:${Math.max(1000, 350 + areas.length * 260)}px;">
+                <table class="excel-table matrix-table" style="min-width:${Math.max(700, 220 + areas.length * 170)}px;">
                     <thead>
                         ${hasAnySuperiorNivel1 ? `<tr>
                             <th colspan="2" class="matrix-stub-header"></th>
@@ -3503,7 +3552,7 @@
                         </tr>
                     </thead>
                     <tbody>
-                        ${rows.map(row => renderLevelCells(row, areas.map(area => `<td class="matrix-area-cell" style="min-width:240px;vertical-align:middle;text-align:center;background:${row.bg};padding:1rem;">${cellForNivel1(row, area)}</td>`).join(''))).join('')}
+                        ${rows.map(row => renderLevelCells(row, areas.map(area => `<td class="matrix-area-cell" style="min-width:150px;vertical-align:middle;text-align:center;background:${row.bg};padding:0.55rem 0.5rem;">${cellForNivel1(row, area)}</td>`).join(''))).join('')}
                     </tbody>
                 </table>`;
                 return;
@@ -3530,7 +3579,7 @@
             const headerRows = hasAnySuperior ? 3 : 2;
             
             container.innerHTML = controls + `
-                <table class="excel-table matrix-table" style="min-width:${Math.max(1100, 350 + subareaColumns.length * 260)}px;">
+                <table class="excel-table matrix-table" style="min-width:${Math.max(700, 220 + subareaColumns.length * 150)}px;">
                     <thead>
                         ${hasAnySuperior ? `<tr>
                             <th rowspan="${headerRows}" colspan="2" class="matrix-stub-header"></th>
@@ -3581,7 +3630,7 @@
                             const cellBg = col.sub ? lightenColor(col.area.color, 0.9) : lightenColor(col.area.color, 0.96);
                             const content = uniqueNames.length ? this.renderNamePills(uniqueNames, row.color, 3) : '<span style="color:#A0AEC0;">-</span>';
                             const isAreaStart = index === 0 || subareaColumns[index - 1].area.id !== col.area.id;
-                            return `<td class="${isAreaStart ? 'matrix-area-cell' : 'matrix-subarea-boundary'}" style="min-width:240px;vertical-align:middle;text-align:center;background:${cellBg};padding:1rem;">${content}</td>`;
+                            return `<td class="${isAreaStart ? 'matrix-area-cell' : 'matrix-subarea-boundary'}" style="min-width:130px;vertical-align:middle;text-align:center;background:${cellBg};padding:0.45rem 0.4rem;">${content}</td>`;
                         }).join(''))).join('')}
                     </tbody>
                 </table>`;
@@ -3675,10 +3724,73 @@
         },
 
         unassignResponsible(responsibleId) {
-            DataModel.updateElement(responsibleId, { area: null, subarea: null, attachedTo: null, placed: false, x: null, y: null });
+            const responsible = DataModel.getElementById(responsibleId);
+            if (!responsible) return;
+            const sameNameAssigned = DataModel.responsibles.filter(r =>
+                r.name === responsible.name && (r.area || r.subarea || r.attachedTo)
+            );
+            if (sameNameAssigned.length <= 1) {
+                DataModel.updateElement(responsibleId, { area: null, subarea: null, attachedTo: null, placed: false, x: null, y: null });
+                this.save();
+                this.render();
+                this.renderStructureTree();
+                this.showToast('Responsable desasignado', 'success');
+                return;
+            }
+            const modalId = 'unassign-select-modal-dynamic';
+            const existing = document.getElementById(modalId);
+            if (existing) existing.remove();
+            const getBoxName = (r) => {
+                if (r.subarea) return DataModel.getElementById(r.subarea)?.name || 'Subárea';
+                if (r.area) return DataModel.getElementById(r.area)?.name || 'Área';
+                if (r.attachedTo) return DataModel.getElementById(r.attachedTo)?.name || 'Elemento';
+                return 'Sin asignar';
+            };
+            const getScopeLabel = (r) => {
+                const s = r.scope || 'corporativo';
+                return s === 'corporativo' ? 'Corp.' : s === 'negocio' ? `Neg.${r.business ? ' ' + r.business : ''}` : 'SGS';
+            };
+            const options = sameNameAssigned.map(r =>
+                `<option value="${r.id}">${this.escapeHtml(getBoxName(r))} — ${getScopeLabel(r)}</option>`
+            ).join('');
+            const modal = document.createElement('div');
+            modal.className = 'modal active';
+            modal.id = modalId;
+            modal.innerHTML = `
+                <div class="modal-content">
+                    <div class="modal-header">Desasignar responsable</div>
+                    <p style="margin-bottom:1rem;color:var(--color-muted);font-size:0.95rem;">
+                        <b>${this.escapeHtml(responsible.name)}</b> aparece en varias cajas. ¿De cuál lo quieres quitar?
+                    </p>
+                    <select id="unassign-box-select" style="width:100%;padding:0.55rem;border:1px solid var(--color-border);border-radius:4px;margin-bottom:1rem;font-size:0.93rem;">
+                        <option value="all">Todas las cajas</option>
+                        ${options}
+                    </select>
+                    <div class="modal-footer">
+                        <button class="btn btn-secondary" onclick="app.closeModal('${modalId}')">Cancelar</button>
+                        <button class="btn btn-danger" onclick="app.confirmUnassignResponsible('${modalId}', '${this.escapeAttr(responsible.name)}')">Quitar asignación</button>
+                    </div>
+                </div>`;
+            document.body.appendChild(modal);
+        },
+
+        confirmUnassignResponsible(modalId, responsibleName) {
+            const select = document.getElementById('unassign-box-select');
+            if (!select) return;
+            const selected = select.value;
+            if (selected === 'all') {
+                DataModel.responsibles
+                    .filter(r => r.name === responsibleName && (r.area || r.subarea || r.attachedTo))
+                    .forEach(r => DataModel.updateElement(r.id, { area: null, subarea: null, attachedTo: null, placed: false, x: null, y: null }));
+                this.showToast(`"${responsibleName}" desasignado de todas las cajas`, 'success');
+            } else {
+                DataModel.updateElement(selected, { area: null, subarea: null, attachedTo: null, placed: false, x: null, y: null });
+                this.showToast('Responsable desasignado', 'success');
+            }
+            this.closeModal(modalId);
+            this.save();
             this.render();
             this.renderStructureTree();
-            this.showToast('Responsable desasignado', 'success');
         },
 
         requestResponsibleAssignment(responsibleId, targetId) {
@@ -5178,12 +5290,55 @@
         save() {
             this.normalizeAssignedDisplayState();
             this.saveCurrentBoardState();
+            const newSnapshot = JSON.stringify(DataModel.toJSON());
+            if (this._lastSnapshot !== null && newSnapshot !== this._lastSnapshot) {
+                this.historyStack.push(this._lastSnapshot);
+                if (this.historyStack.length > 60) this.historyStack.shift();
+                this.redoStack = [];
+            }
+            this._lastSnapshot = newSnapshot;
             const data = {
                 ...DataModel.toJSON(),
                 boards: this.boards,
                 currentBoard: this.currentBoard
             };
             localStorage.setItem('organigrama-data-v2', JSON.stringify(data));
+        },
+
+        undo() {
+            if (!this.historyStack.length) { this.showToast('No hay más acciones para deshacer', 'info'); return; }
+            const currentSnapshot = JSON.stringify(DataModel.toJSON());
+            this.redoStack.push(currentSnapshot);
+            const prev = this.historyStack.pop();
+            DataModel.fromJSON(JSON.parse(prev));
+            DataModel.areas.forEach(a => a.color = AREA_COLOR);
+            DataModel.subareas.forEach(s => s.color = SUBAREA_COLOR);
+            this._lastSnapshot = prev;
+            this.saveCurrentBoardState();
+            const data = { ...DataModel.toJSON(), boards: this.boards, currentBoard: this.currentBoard };
+            localStorage.setItem('organigrama-data-v2', JSON.stringify(data));
+            this.render();
+            this.renderStructureTree();
+            if (this.currentView === 'organigrama') setTimeout(() => this.canvas.render(), 50);
+            this.showToast('Acción deshecha', 'info');
+        },
+
+        redo() {
+            if (!this.redoStack.length) { this.showToast('No hay acciones para rehacer', 'info'); return; }
+            const currentSnapshot = JSON.stringify(DataModel.toJSON());
+            this.historyStack.push(currentSnapshot);
+            const next = this.redoStack.pop();
+            DataModel.fromJSON(JSON.parse(next));
+            DataModel.areas.forEach(a => a.color = AREA_COLOR);
+            DataModel.subareas.forEach(s => s.color = SUBAREA_COLOR);
+            this._lastSnapshot = next;
+            this.saveCurrentBoardState();
+            const data = { ...DataModel.toJSON(), boards: this.boards, currentBoard: this.currentBoard };
+            localStorage.setItem('organigrama-data-v2', JSON.stringify(data));
+            this.render();
+            this.renderStructureTree();
+            if (this.currentView === 'organigrama') setTimeout(() => this.canvas.render(), 50);
+            this.showToast('Acción rehecha', 'info');
         },
 
         load() {
