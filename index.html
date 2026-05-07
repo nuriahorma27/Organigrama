@@ -149,7 +149,7 @@
         }
         .tree-row {
             display: flex;
-            align-items: center;
+            align-items: flex-start;
             gap: 0.5rem;
             padding: 0.38rem 0.55rem;
             cursor: grab;
@@ -161,7 +161,7 @@
         .tree-row.area { color: white; font-weight: 700; }
         .tree-row.subarea { padding-left: 1rem; font-weight: 600; }
         .tree-row.responsible { padding-left: 1.35rem; font-size: 0.78rem; }
-        .tree-row .tree-name { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .tree-row .tree-name { min-width: 0; flex: 1; word-break: break-word; overflow-wrap: anywhere; white-space: normal; line-height: 1.3; padding-top: 0.1rem; }
         .tree-empty { color: var(--color-muted); font-size: 0.78rem; padding: 0.45rem 0.55rem; }
         .structure-columns { display: grid; grid-template-columns: 1fr; gap: 0.65rem; }
         .structure-column {
@@ -201,6 +201,8 @@
             cursor: pointer;
             font-size: 0.8rem;
             padding: 0.25rem;
+            flex-shrink: 0;
+            align-self: flex-start;
         }
         .btn-small:hover { color: var(--color-primary); }
         .tree-row.area .btn-small,
@@ -3085,12 +3087,12 @@
                 : kind === 'subarea'
                     ? `border-left:5px solid ${AREA_COLOR};background:${color};`
                     : kind === 'superior' ? `background:${color};color:white;` : '';
-            const assignedTo = kind === 'responsible' ? this.getResponsibleAssignmentName(item) : '';
+            const isAssigned = kind === 'responsible' ? this.isResponsibleAssigned(item) : false;
             const title = kind === 'subarea' ? ` title="${this.escapeAttr(item.name)}"` : '';
             return `
                 <div class="tree-row ${kind}" draggable="true" data-element-id="${item.id}" style="${style}"${title}>
                     <span class="tree-name">${this.escapeHtml(item.name)}</span>
-                    ${assignedTo ? `<button class="btn-small" onclick="event.stopPropagation();app.unassignResponsible('${item.id}')" title="Quitar asignación">✕</button>` : ''}
+                    ${isAssigned ? `<button class="btn-small" onclick="event.stopPropagation();app.unassignResponsible('${item.id}')" title="Quitar asignación">✕</button>` : ''}
                     ${item.placed === true ? `<button class="btn-small tree-unplace-button" onclick="event.stopPropagation();app.unplaceElement('${item.id}')" title="Quitar del papel">✕</button>` : ''}
                 </div>`;
         },
