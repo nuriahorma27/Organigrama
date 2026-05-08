@@ -924,6 +924,7 @@
                         <small style="color:var(--color-muted);">Columnas por área y filas por Corporativo, Negocio y SGS.</small>
                     </div>
                 </div>
+                <div id="matriz-controls"></div>
                 <div class="sheet-wrap">
                     <div id="matriz-content"></div>
                 </div>
@@ -3457,6 +3458,8 @@
                 DataModel.subareas.some(sub => sub.parent === area.id && sub.placed === true)
             );
             if (!areas.length) {
+                const ctrl = document.getElementById('matriz-controls');
+                if (ctrl) ctrl.innerHTML = '';
                 container.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-state-icon">▦</div>
@@ -3554,18 +3557,21 @@
                 return `<div>${this.escapeHtml(section.name)}</div>${pills}`;
             };
 
-            const controls = `
-                <div style="position:sticky;top:0;z-index:10;padding:0.75rem;display:flex;align-items:center;gap:0.75rem;border-bottom:1px solid var(--color-border);background:var(--color-surface);">
-                    <div class="segmented-control">
-                        <button class="${mode === 'nivel1' ? 'active' : ''}" onclick="app.setMatrizViewMode('nivel1')">Nivel 1</button>
-                        <button class="${mode === 'nivel2' ? 'active' : ''}" onclick="app.setMatrizViewMode('nivel2')">Nivel 2</button>
-                    </div>
-                    <small style="color:var(--color-muted);">${mode === 'nivel1' ? 'Vista por áreas' : 'Vista por áreas y subáreas'}</small>
-                </div>`;
+            const controlsContainer = document.getElementById('matriz-controls');
+            if (controlsContainer) {
+                controlsContainer.innerHTML = `
+                    <div style="padding:0.6rem 0.75rem;display:flex;align-items:center;gap:0.75rem;border-bottom:1px solid var(--color-border);background:var(--color-surface);">
+                        <div class="segmented-control">
+                            <button class="${mode === 'nivel1' ? 'active' : ''}" onclick="app.setMatrizViewMode('nivel1')">Nivel 1</button>
+                            <button class="${mode === 'nivel2' ? 'active' : ''}" onclick="app.setMatrizViewMode('nivel2')">Nivel 2</button>
+                        </div>
+                        <small style="color:var(--color-muted);">${mode === 'nivel1' ? 'Vista por áreas' : 'Vista por áreas y subáreas'}</small>
+                    </div>`;
+            }
 
             if (mode === 'nivel1') {
                 const hasAnySuperiorNivel1 = DataModel.superiors.some(section => this.getSectionMatrixAreas(section, areas).length);
-                container.innerHTML = controls + `
+                container.innerHTML = `
                 <table class="excel-table matrix-table" style="min-width:${Math.max(700, 220 + areas.length * 170)}px;">
                     <thead>
                         ${hasAnySuperiorNivel1 ? `<tr>
@@ -3613,7 +3619,7 @@
             const hasAnySuperior = DataModel.superiors.length > 0;
             const headerRows = hasAnySuperior ? 3 : 2;
             
-            container.innerHTML = controls + `
+            container.innerHTML = `
                 <table class="excel-table matrix-table" style="min-width:${Math.max(700, 220 + subareaColumns.length * 150)}px;">
                     <thead>
                         ${hasAnySuperior ? `<tr>
