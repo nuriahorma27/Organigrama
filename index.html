@@ -869,7 +869,6 @@
                         <button class="btn-icon" onclick="app.canvas.cancelConnectionMode()" title="Cancelar unión">✕</button>
                         <span id="connection-status" style="font-size:0.8rem;color:var(--color-muted);"></span>
                         <span style="flex:1;"></span>
-                        <span id="zoom-level" style="font-size:0.85rem;color:var(--color-muted);">100%</span>
                     </div>
                     <div class="canvas-wrapper" id="canvas-wrapper">
                         <canvas id="canvas"></canvas>
@@ -4001,6 +4000,9 @@
             offsetX: 0,
             offsetY: 0,
             scale: 1,
+            dpr: 1,
+            cssW: 900,
+            cssH: 620,
             isDragging: false,
             isPanning: false,
             draggedElement: null,
@@ -4027,8 +4029,14 @@
 
             setupCanvas() {
                 const wrapper = document.getElementById('canvas-wrapper');
-                this.el.width = Math.max(wrapper.clientWidth, 900);
-                this.el.height = Math.max(wrapper.clientHeight, 620);
+                const dpr = window.devicePixelRatio || 1;
+                this.dpr = dpr;
+                this.cssW = Math.max(wrapper.clientWidth, 900);
+                this.cssH = Math.max(wrapper.clientHeight, 620);
+                this.el.width = this.cssW * dpr;
+                this.el.height = this.cssH * dpr;
+                this.el.style.width = this.cssW + 'px';
+                this.el.style.height = this.cssH + 'px';
                 this.offsetX = 0;
                 this.offsetY = 0;
                 this.scale = 1;
@@ -4036,8 +4044,8 @@
 
             getPaperCenter() {
                 return {
-                    x: (this.el.width / 2 - this.offsetX) / this.scale,
-                    y: (this.el.height / 2 - this.offsetY) / this.scale
+                    x: (this.cssW / 2 - this.offsetX) / this.scale,
+                    y: (this.cssH / 2 - this.offsetY) / this.scale
                 };
             },
 
@@ -4434,6 +4442,7 @@
                 const ctx = this.ctx;
                 ctx.clearRect(0, 0, this.el.width, this.el.height);
                 ctx.save();
+                ctx.scale(this.dpr || 1, this.dpr || 1);
                 ctx.translate(this.offsetX, this.offsetY);
                 ctx.scale(this.scale, this.scale);
 
@@ -4484,11 +4493,11 @@
                 const gridSize = 25;
                 ctx.strokeStyle = '#EAECEF';
                 ctx.lineWidth = 0.5;
-                for (let x = 0; x < this.el.width; x += gridSize) {
-                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, this.el.height); ctx.stroke();
+                for (let x = 0; x < this.cssW; x += gridSize) {
+                    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, this.cssH); ctx.stroke();
                 }
-                for (let y = 0; y < this.el.height; y += gridSize) {
-                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(this.el.width, y); ctx.stroke();
+                for (let y = 0; y < this.cssH; y += gridSize) {
+                    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(this.cssW, y); ctx.stroke();
                 }
             },
 
@@ -5241,8 +5250,8 @@
                 this.render();
             },
 
-            zoomIn() { this.zoomAt(this.el.width / 2, this.el.height / 2, 1.2); },
-            zoomOut() { this.zoomAt(this.el.width / 2, this.el.height / 2, 0.8); },
+            zoomIn() { this.zoomAt(this.cssW / 2, this.cssH / 2, 1.2); },
+            zoomOut() { this.zoomAt(this.cssW / 2, this.cssH / 2, 0.8); },
 
             centerCanvas() {
                 this.offsetX = 0;
@@ -5268,16 +5277,13 @@
                 const pad = 60;
                 const w = maxX - minX + pad * 2;
                 const h = maxY - minY + pad * 2;
-                this.scale = Math.min(this.el.width / w, this.el.height / h, 1);
-                this.offsetX = (this.el.width - w * this.scale) / 2 - minX * this.scale + pad;
-                this.offsetY = (this.el.height - h * this.scale) / 2 - minY * this.scale + pad;
+                this.scale = Math.min(this.cssW / w, this.cssH / h, 1);
+                this.offsetX = (this.cssW - w * this.scale) / 2 - minX * this.scale + pad;
+                this.offsetY = (this.cssH - h * this.scale) / 2 - minY * this.scale + pad;
                 this.render();
             },
 
-            updateZoomDisplay() {
-                const el = document.getElementById('zoom-level');
-                if (el) el.textContent = Math.round(this.scale * 100) + '%';
-            },
+            updateZoomDisplay() {},
 
             handleDrop(e) {
                 e.preventDefault();
