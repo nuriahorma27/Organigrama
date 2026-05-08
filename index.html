@@ -604,6 +604,17 @@
             border: 1px solid var(--color-border);
             border-radius: 8px;
         }
+        /* Reparto de tareas */
+        .tareas-controls { padding: 0.6rem 0.75rem; display: flex; align-items: center; gap: 0.75rem; border-bottom: 1px solid var(--color-border); background: var(--color-surface); flex-wrap: wrap; }
+        .tareas-group-header { padding: 0.55rem 1rem; background: var(--color-primary-dark); color: white; font-weight: 700; font-size: 0.88rem; }
+        .tareas-subgroup-header { padding: 0.4rem 1.5rem; background: var(--color-background); color: var(--color-primary-dark); font-weight: 600; font-size: 0.82rem; border-bottom: 1px solid var(--color-border); }
+        .tarea-row { display: flex; align-items: center; padding: 0.5rem 1rem 0.5rem 1.75rem; border-bottom: 1px solid var(--color-border); gap: 0.75rem; }
+        .tarea-row:last-child { border-bottom: none; }
+        .tarea-row:hover { background: var(--color-background); }
+        .tarea-name { flex: 1; font-size: 0.88rem; }
+        .tarea-edit-btn { background: none; border: 1px solid var(--color-border); border-radius: 4px; padding: 0.18rem 0.45rem; cursor: pointer; color: var(--color-muted); font-size: 0.8rem; line-height: 1.4; }
+        .tarea-edit-btn:hover { color: var(--color-primary); border-color: var(--color-primary); }
+        .tareas-empty { padding: 2.5rem; text-align: center; color: var(--color-muted); font-size: 0.9rem; }
         .excel-table { margin: 0; min-width: 900px; }
         .excel-table th {
             position: sticky;
@@ -834,6 +845,7 @@
         <div class="nav-tabs">
             <button class="nav-tab active" onclick="app.switchView('organigrama', event)">Organización</button>
             <button class="nav-tab" onclick="app.switchView('matriz', event)">Modelo tricapa</button>
+            <button class="nav-tab" onclick="app.switchView('tareas', event)">Reparto de tareas</button>
             <button class="nav-tab" onclick="app.switchView('responsables', event)">Responsables</button>
             <button class="nav-tab" onclick="app.switchView('instrucciones', event)">Instrucciones</button>
             <button class="nav-tab" onclick="app.switchView('datos', event)">Datos</button>
@@ -926,6 +938,23 @@
                 <div id="matriz-controls"></div>
                 <div class="sheet-wrap">
                     <div id="matriz-content"></div>
+                </div>
+            </div>
+
+            <!-- Vista Reparto de Tareas -->
+            <div id="tareas-view" class="content-area stacked-content">
+                <div class="sheet-toolbar">
+                    <div>
+                        <div class="sheet-title">Reparto de tareas</div>
+                        <small style="color:var(--color-muted);">Asigna y gestiona tareas por área y subárea.</small>
+                    </div>
+                    <div class="sheet-actions">
+                        <button class="btn btn-primary btn-sm" onclick="app.showAddTareaModal()">+ Añadir tarea</button>
+                    </div>
+                </div>
+                <div id="tareas-controls"></div>
+                <div class="sheet-wrap">
+                    <div id="tareas-content"></div>
                 </div>
             </div>
 
@@ -1329,6 +1358,42 @@
         </div>
     </div>
 
+    <!-- Modal Añadir / Editar Tarea -->
+    <div id="tarea-modal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header" id="tarea-modal-title">Añadir tarea</div>
+            <input type="hidden" id="tarea-edit-id">
+            <div class="form-group">
+                <label>Nombre de la tarea</label>
+                <input type="text" id="tarea-nombre" placeholder="Describe la tarea...">
+            </div>
+            <div class="form-group">
+                <label>Área</label>
+                <select id="tarea-area" onchange="app.onTareaAreaChange()">
+                    <option value="">-- Selecciona área --</option>
+                </select>
+            </div>
+            <div class="form-group">
+                <label>Nivel</label>
+                <select id="tarea-nivel" onchange="app.onTareaNivelChange()">
+                    <option value="nivel1">Nivel 1 (área)</option>
+                    <option value="nivel2">Nivel 2 (subárea)</option>
+                </select>
+            </div>
+            <div class="form-group" id="tarea-subarea-group" style="display:none;">
+                <label>Subárea</label>
+                <select id="tarea-subarea">
+                    <option value="">-- Selecciona subárea --</option>
+                </select>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-danger" id="tarea-delete-btn" onclick="app.deleteTareaFromModal()" style="display:none;">Eliminar</button>
+                <button class="btn btn-secondary" onclick="app.closeModal('tarea-modal')">Cancelar</button>
+                <button class="btn btn-primary" onclick="app.saveTareaFromModal()">Guardar</button>
+            </div>
+        </div>
+    </div>
+
     <!-- Toast Container -->
     <div class="toast-container" id="toast-container"></div>
 
@@ -1411,6 +1476,7 @@
         excelColumns: [],
         excelRows: [],
         businesses: [],
+        tasks: [],
 
         addSuperior(superior) {
             const id = this.generateId('superior');
@@ -1459,6 +1525,13 @@
             const newPersona = { id, placed: false, ...persona, type: 'person' };
             this.personas.push(newPersona);
             return newPersona;
+        },
+
+        addTask(task) {
+            const id = this.generateId('task');
+            const newTask = { id, ...task };
+            this.tasks.push(newTask);
+            return newTask;
         },
 
         addManualConnection(connection) {
@@ -1522,6 +1595,7 @@
             this.personas = [];
             this.manualConnections = [];
             this.businesses = [];
+            this.tasks = [];
         },
 
         setExcelData(columns, rows) {
@@ -1540,7 +1614,8 @@
                 manualConnections: this.manualConnections,
                 excelColumns: this.excelColumns,
                 excelRows: this.excelRows,
-                businesses: this.businesses
+                businesses: this.businesses,
+                tasks: this.tasks
             };
         },
 
@@ -1556,6 +1631,7 @@
             this.excelColumns = data.excelColumns || [];
             this.excelRows = data.excelRows || [];
             this.businesses = data.businesses || [];
+            this.tasks = data.tasks || [];
         }
     };
 
@@ -1566,6 +1642,8 @@
         currentView: 'organigrama',
         currentBoard: 'p1',
         matrizViewMode: 'nivel1',
+        tareasViewMode: 'nivel1',
+        tareasFilterArea: 'all',
         structureSearch: { area: '', subarea: '', responsible: '' },
         boards: {},
         selectedElement: null,
@@ -1693,6 +1771,8 @@
                 this.renderDatosView();
             } else if (view === 'matriz') {
                 this.renderMatrizView();
+            } else if (view === 'tareas') {
+                this.renderTareasView();
             } else {
                 this.renderResponsablesView();
             }
@@ -3448,6 +3528,192 @@
 
         renderMatrizViewInto(container, mode) {
             this._renderMatrizViewCore(container, mode);
+        },
+
+        // ============================================
+        // REPARTO DE TAREAS
+        // ============================================
+
+        renderTareasView() {
+            const mode = this.tareasViewMode;
+            const filterArea = this.tareasFilterArea;
+            const areas = DataModel.areas;
+
+            // Controls
+            const ctrl = document.getElementById('tareas-controls');
+            if (ctrl) {
+                const areaOptions = areas.map(a =>
+                    `<option value="${a.id}" ${filterArea === a.id ? 'selected' : ''}>${this.escapeHtml(a.name)}</option>`
+                ).join('');
+                ctrl.innerHTML = `<div class="tareas-controls">
+                    <div class="segmented-control">
+                        <button class="${mode === 'nivel1' ? 'active' : ''}" onclick="app.setTareasMode('nivel1')">Nivel 1</button>
+                        <button class="${mode === 'nivel2' ? 'active' : ''}" onclick="app.setTareasMode('nivel2')">Nivel 2</button>
+                    </div>
+                    <select style="padding:0.4rem 0.6rem;border:1px solid var(--color-border);border-radius:6px;font-size:0.88rem;" onchange="app.setTareasFilterArea(this.value)">
+                        <option value="all" ${filterArea === 'all' ? 'selected' : ''}>Todas las áreas</option>
+                        ${areaOptions}
+                    </select>
+                    <small style="color:var(--color-muted);">${mode === 'nivel1' ? 'Vista por áreas' : 'Vista por áreas y subáreas'}</small>
+                </div>`;
+            }
+
+            // Content
+            const container = document.getElementById('tareas-content');
+            if (!container) return;
+
+            const tasks = DataModel.tasks.filter(t => t.nivel === mode);
+            const visibleAreas = filterArea === 'all' ? areas : areas.filter(a => a.id === filterArea);
+
+            if (!visibleAreas.length) {
+                container.innerHTML = '<div class="tareas-empty">No hay áreas creadas todavía.</div>';
+                return;
+            }
+
+            let html = '';
+            visibleAreas.forEach(area => {
+                const areaTasks = tasks.filter(t => t.areaId === area.id);
+                if (mode === 'nivel1') {
+                    html += `<div class="tareas-group">
+                        <div class="tareas-group-header">${this.escapeHtml(area.name)}</div>`;
+                    if (!areaTasks.length) {
+                        html += '<div class="tarea-row"><span class="tarea-name" style="color:var(--color-muted);font-style:italic;">Sin tareas</span></div>';
+                    } else {
+                        areaTasks.forEach(t => {
+                            html += `<div class="tarea-row">
+                                <span class="tarea-name">${this.escapeHtml(t.name)}</span>
+                                <button class="tarea-edit-btn" onclick="app.showEditTareaModal('${t.id}')" title="Editar tarea">✎</button>
+                            </div>`;
+                        });
+                    }
+                    html += '</div>';
+                } else {
+                    // nivel2: group by subarea
+                    const subareas = DataModel.subareas.filter(s => s.parent === area.id);
+                    html += `<div class="tareas-group">
+                        <div class="tareas-group-header">${this.escapeHtml(area.name)}</div>`;
+                    if (!subareas.length) {
+                        html += '<div class="tarea-row"><span class="tarea-name" style="color:var(--color-muted);font-style:italic;">Sin subáreas</span></div>';
+                    } else {
+                        subareas.forEach(sub => {
+                            const subTasks = areaTasks.filter(t => t.subareaId === sub.id);
+                            html += `<div class="tareas-subgroup-header">${this.escapeHtml(sub.name)}</div>`;
+                            if (!subTasks.length) {
+                                html += '<div class="tarea-row"><span class="tarea-name" style="color:var(--color-muted);font-style:italic;">Sin tareas</span></div>';
+                            } else {
+                                subTasks.forEach(t => {
+                                    html += `<div class="tarea-row">
+                                        <span class="tarea-name">${this.escapeHtml(t.name)}</span>
+                                        <button class="tarea-edit-btn" onclick="app.showEditTareaModal('${t.id}')" title="Editar tarea">✎</button>
+                                    </div>`;
+                                });
+                            }
+                        });
+                    }
+                    html += '</div>';
+                }
+            });
+
+            container.innerHTML = html || '<div class="tareas-empty">No hay tareas en esta vista.</div>';
+        },
+
+        setTareasMode(mode) {
+            this.tareasViewMode = mode;
+            this.renderTareasView();
+        },
+
+        setTareasFilterArea(areaId) {
+            this.tareasFilterArea = areaId;
+            this.renderTareasView();
+        },
+
+        showAddTareaModal() {
+            document.getElementById('tarea-modal-title').textContent = 'Añadir tarea';
+            document.getElementById('tarea-edit-id').value = '';
+            document.getElementById('tarea-nombre').value = '';
+            document.getElementById('tarea-nivel').value = this.tareasViewMode;
+            document.getElementById('tarea-delete-btn').style.display = 'none';
+
+            const areaSelect = document.getElementById('tarea-area');
+            areaSelect.innerHTML = '<option value="">-- Selecciona área --</option>' +
+                DataModel.areas.map(a => `<option value="${a.id}">${this.escapeHtml(a.name)}</option>`).join('');
+            if (this.tareasFilterArea !== 'all') areaSelect.value = this.tareasFilterArea;
+
+            this.onTareaNivelChange();
+            this.onTareaAreaChange();
+            this.openModal('tarea-modal');
+        },
+
+        showEditTareaModal(id) {
+            const task = DataModel.tasks.find(t => t.id === id);
+            if (!task) return;
+
+            document.getElementById('tarea-modal-title').textContent = 'Editar tarea';
+            document.getElementById('tarea-edit-id').value = id;
+            document.getElementById('tarea-nombre').value = task.name;
+            document.getElementById('tarea-nivel').value = task.nivel;
+            document.getElementById('tarea-delete-btn').style.display = '';
+
+            const areaSelect = document.getElementById('tarea-area');
+            areaSelect.innerHTML = '<option value="">-- Selecciona área --</option>' +
+                DataModel.areas.map(a => `<option value="${a.id}">${this.escapeHtml(a.name)}</option>`).join('');
+            areaSelect.value = task.areaId || '';
+
+            this.onTareaNivelChange();
+            this.onTareaAreaChange();
+
+            if (task.subareaId) document.getElementById('tarea-subarea').value = task.subareaId;
+            this.openModal('tarea-modal');
+        },
+
+        onTareaNivelChange() {
+            const nivel = document.getElementById('tarea-nivel').value;
+            const group = document.getElementById('tarea-subarea-group');
+            group.style.display = nivel === 'nivel2' ? '' : 'none';
+            if (nivel === 'nivel2') this.onTareaAreaChange();
+        },
+
+        onTareaAreaChange() {
+            const areaId = document.getElementById('tarea-area').value;
+            const nivel = document.getElementById('tarea-nivel').value;
+            if (nivel !== 'nivel2') return;
+            const subareas = DataModel.subareas.filter(s => s.parent === areaId);
+            document.getElementById('tarea-subarea').innerHTML =
+                '<option value="">-- Selecciona subárea --</option>' +
+                subareas.map(s => `<option value="${s.id}">${this.escapeHtml(s.name)}</option>`).join('');
+        },
+
+        saveTareaFromModal() {
+            const nombre = document.getElementById('tarea-nombre').value.trim();
+            const areaId = document.getElementById('tarea-area').value;
+            const nivel = document.getElementById('tarea-nivel').value;
+            const subareaId = nivel === 'nivel2' ? document.getElementById('tarea-subarea').value : null;
+            const editId = document.getElementById('tarea-edit-id').value;
+
+            if (!nombre) { this.showToast('Escribe el nombre de la tarea', 'warning'); return; }
+            if (!areaId) { this.showToast('Selecciona un área', 'warning'); return; }
+            if (nivel === 'nivel2' && !subareaId) { this.showToast('Selecciona una subárea', 'warning'); return; }
+
+            if (editId) {
+                const task = DataModel.tasks.find(t => t.id === editId);
+                if (task) Object.assign(task, { name: nombre, nivel, areaId, subareaId: subareaId || null });
+            } else {
+                DataModel.addTask({ name: nombre, nivel, areaId, subareaId: subareaId || null });
+            }
+            this.save();
+            this.closeModal('tarea-modal');
+            this.renderTareasView();
+            this.showToast(editId ? 'Tarea actualizada' : 'Tarea añadida', 'success');
+        },
+
+        deleteTareaFromModal() {
+            const id = document.getElementById('tarea-edit-id').value;
+            if (!id) return;
+            DataModel.tasks = DataModel.tasks.filter(t => t.id !== id);
+            this.save();
+            this.closeModal('tarea-modal');
+            this.renderTareasView();
+            this.showToast('Tarea eliminada', 'success');
         },
 
         renderMatrizView() {
