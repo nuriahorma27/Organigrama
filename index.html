@@ -3732,10 +3732,9 @@
                 r.name === responsible.name && (r.area || r.subarea || r.attachedTo)
             );
             if (sameNameAssigned.length <= 1) {
-                DataModel.updateElement(responsibleId, { area: null, subarea: null, attachedTo: null, placed: false, x: null, y: null });
+                Object.assign(responsible, { area: null, subarea: null, attachedTo: null, placed: false, x: null, y: null });
                 this.save();
                 this.render();
-                this.renderStructureTree();
                 this.showToast('Responsable desasignado', 'success');
                 return;
             }
@@ -3780,19 +3779,20 @@
             const select = document.getElementById('unassign-box-select');
             if (!select) return;
             const selected = select.value;
+            const clearAssignment = r => Object.assign(r, { area: null, subarea: null, attachedTo: null, placed: false, x: null, y: null });
             if (selected === 'all') {
                 DataModel.responsibles
                     .filter(r => r.name === responsibleName && (r.area || r.subarea || r.attachedTo))
-                    .forEach(r => DataModel.updateElement(r.id, { area: null, subarea: null, attachedTo: null, placed: false, x: null, y: null }));
+                    .forEach(clearAssignment);
                 this.showToast(`"${responsibleName}" desasignado de todas las cajas`, 'success');
             } else {
-                DataModel.updateElement(selected, { area: null, subarea: null, attachedTo: null, placed: false, x: null, y: null });
+                const el = DataModel.getElementById(selected);
+                if (el) clearAssignment(el);
                 this.showToast('Responsable desasignado', 'success');
             }
             this.closeModal(modalId);
             this.save();
             this.render();
-            this.renderStructureTree();
         },
 
         requestResponsibleAssignment(responsibleId, targetId) {
@@ -5299,47 +5299,37 @@
                 this.redoStack = [];
             }
             this._lastSnapshot = newSnapshot;
-            const data = {
-                ...DataModel.toJSON(),
-                boards: this.boards,
-                currentBoard: this.currentBoard
-            };
+            const data = { ...JSON.parse(newSnapshot), boards: this.boards, currentBoard: this.currentBoard };
             localStorage.setItem('organigrama-data-v2', JSON.stringify(data));
+        },
+
+        _applySnapshot(snapshot) {
+            DataModel.fromJSON(JSON.parse(snapshot));
+            DataModel.areas.forEach(a => a.color = AREA_COLOR);
+            DataModel.subareas.forEach(s => s.color = SUBAREA_COLOR);
+            this._lastSnapshot = snapshot;
+            this.saveCurrentBoardState();
+            const data = { ...JSON.parse(snapshot), boards: this.boards, currentBoard: this.currentBoard };
+            localStorage.setItem('organigrama-data-v2', JSON.stringify(data));
+            this.render();
+            if (this.currentView === 'organigrama') setTimeout(() => this.canvas.render(), 50);
         },
 
         undo() {
             if (!this.historyStack.length) { this.showToast('No hay más acciones para deshacer', 'info'); return; }
-            const currentSnapshot = JSON.stringify(DataModel.toJSON());
-            this.redoStack.push(currentSnapshot);
-            const prev = this.historyStack.pop();
-            DataModel.fromJSON(JSON.parse(prev));
-            DataModel.areas.forEach(a => a.color = AREA_COLOR);
-            DataModel.subareas.forEach(s => s.color = SUBAREA_COLOR);
-            this._lastSnapshot = prev;
-            this.saveCurrentBoardState();
-            const data = { ...DataModel.toJSON(), boards: this.boards, currentBoard: this.currentBoard };
-            localStorage.setItem('organigrama-data-v2', JSON.stringify(data));
-            this.render();
-            this.renderStructureTree();
-            if (this.currentView === 'organigrama') setTimeout(() => this.canvas.render(), 50);
+            const cur = JSON.stringify(DataModel.toJSON());
+            this.redoStack.push(cur);
+            if (this.redoStack.length > 60) this.redoStack.shift();
+            this._applySnapshot(this.historyStack.pop());
             this.showToast('Acción deshecha', 'info');
         },
 
         redo() {
             if (!this.redoStack.length) { this.showToast('No hay acciones para rehacer', 'info'); return; }
-            const currentSnapshot = JSON.stringify(DataModel.toJSON());
-            this.historyStack.push(currentSnapshot);
-            const next = this.redoStack.pop();
-            DataModel.fromJSON(JSON.parse(next));
-            DataModel.areas.forEach(a => a.color = AREA_COLOR);
-            DataModel.subareas.forEach(s => s.color = SUBAREA_COLOR);
-            this._lastSnapshot = next;
-            this.saveCurrentBoardState();
-            const data = { ...DataModel.toJSON(), boards: this.boards, currentBoard: this.currentBoard };
-            localStorage.setItem('organigrama-data-v2', JSON.stringify(data));
-            this.render();
-            this.renderStructureTree();
-            if (this.currentView === 'organigrama') setTimeout(() => this.canvas.render(), 50);
+            const cur = JSON.stringify(DataModel.toJSON());
+            this.historyStack.push(cur);
+            if (this.historyStack.length > 60) this.historyStack.shift();
+            this._applySnapshot(this.redoStack.pop());
             this.showToast('Acción rehecha', 'info');
         },
 
