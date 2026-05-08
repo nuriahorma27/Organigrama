@@ -1951,10 +1951,16 @@
                 offsetY: canvasObj.offsetY,
                 scale: canvasObj.scale,
                 exporting: canvasObj.exporting,
-                hideNames: canvasObj.hideNames
+                hideNames: canvasObj.hideNames,
+                dpr: canvasObj.dpr,
+                cssW: canvasObj.cssW,
+                cssH: canvasObj.cssH
             };
             canvasObj.el = exp;
             canvasObj.ctx = exp.getContext('2d');
+            canvasObj.dpr = 1;
+            canvasObj.cssW = exp.width;
+            canvasObj.cssH = exp.height;
             canvasObj.offsetX = bounds ? (exp.width - bounds.w * scale) / 2 - bounds.minX * scale : 0;
             canvasObj.offsetY = bounds ? (exp.height - bounds.h * scale) / 2 - bounds.minY * scale : 0;
             canvasObj.scale = scale;
@@ -1968,6 +1974,9 @@
             canvasObj.scale = prev.scale;
             canvasObj.exporting = prev.exporting;
             canvasObj.hideNames = prev.hideNames;
+            canvasObj.dpr = prev.dpr;
+            canvasObj.cssW = prev.cssW;
+            canvasObj.cssH = prev.cssH;
             canvasObj.render();
             // Composite sobre fondo blanco para exportaciones JPG/PDF
             const white = document.createElement('canvas');
