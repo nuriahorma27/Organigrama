@@ -897,6 +897,7 @@
                     </div>
                     <div class="sheet-actions">
                         <button class="btn btn-success btn-sm" onclick="app.sincronizarAhora();">🔄 Sincronizar</button>
+                        <button class="btn btn-secondary btn-sm" onclick="app.downloadExcel();">📥 Descargar Excel</button>
                     </div>
                 </div>
                 <div class="sheet-wrap">
@@ -2392,6 +2393,7 @@
             const hasPlacedElements = this.hasPlacedElements();
             const area = DataModel.addArea({ name, color, x: null, y: null, placed: false });
             if (!hasPlacedElements) this.canvas.placeAreaAtRowCenter(area);
+            this._appendRowToExcelData({ Área: name });
             this.closeModal('add-area-modal');
             this.save();
             this.renderStructureTree();
@@ -2405,6 +2407,7 @@
             const parent = document.getElementById('new-subarea-parent').value || null;
             const area = parent ? DataModel.areas.find(a => a.id === parent) : null;
             DataModel.addSubarea({ name, parent, color: SUBAREA_COLOR, x: null, y: null, placed: false, manualAssigned: Boolean(parent) });
+            this._appendRowToExcelData({ Área: area?.name || '', Subárea: name });
             this.closeModal('add-subarea-modal');
             this.save();
             this.renderStructureTree();
@@ -2437,6 +2440,9 @@
                 placed: false,
                 manualAssigned: Boolean(area || subarea)
             });
+            const areaObj = area ? DataModel.areas.find(a => a.id === area) : null;
+            const subareaObj = subarea ? DataModel.subareas.find(s => s.id === subarea) : null;
+            this._appendRowToExcelData({ Área: areaObj?.name || '', Subárea: subareaObj?.name || '', Responsable: name });
             this.closeModal('add-responsible-modal');
             this.save();
             this.renderStructureTree();
@@ -2772,6 +2778,31 @@
             this.renderStructureTree();
         },
 
+        _appendRowToExcelData(fields) {
+            if (!DataModel.excelColumns.length) return;
+            const mappings = this.buildMappingsFromColumns(DataModel.excelColumns);
+            const row = {};
+            DataModel.excelColumns.forEach(col => row[col] = '');
+            Object.entries(fields).forEach(([field, value]) => {
+                const col = mappings[field];
+                if (col) row[col] = value || '';
+            });
+            DataModel.excelRows.push(row);
+            if (this.currentView === 'datos') this.renderDatosView();
+        },
+
+        downloadExcel() {
+            if (!DataModel.excelColumns.length) {
+                this.showToast('No hay datos para descargar', 'warning');
+                return;
+            }
+            const wb = XLSX.utils.book_new();
+            const ws = XLSX.utils.json_to_sheet(DataModel.excelRows, { header: DataModel.excelColumns });
+            XLSX.utils.book_append_sheet(wb, ws, 'Datos');
+            XLSX.writeFile(wb, 'organigrama-datos.xlsx');
+            this.showToast('Excel descargado', 'success');
+        },
+
         isOrganigramaDirectoFormat(columns) {
             const norm = columns.map(c => this.normalizeHeader(c));
             const hasCapa    = norm.some(n => n === 'capa');
@@ -3087,7 +3118,9 @@
                 : kind === 'subarea'
                     ? `border-left:5px solid ${AREA_COLOR};background:${color};`
                     : kind === 'superior' ? `background:${color};color:white;` : '';
-            const isAssigned = kind === 'responsible' ? this.isResponsibleAssigned(item) : false;
+            const isAssigned = kind === 'responsible'
+                ? DataModel.responsibles.some(r => r.name === item.name && this.isResponsibleAssigned(r))
+                : false;
             const title = kind === 'subarea' ? ` title="${this.escapeAttr(item.name)}"` : '';
             return `
                 <div class="tree-row ${kind}" draggable="true" data-element-id="${item.id}" style="${style}"${title}>
@@ -3731,8 +3764,13 @@
             const sameNameAssigned = DataModel.responsibles.filter(r =>
                 r.name === responsible.name && (r.area || r.subarea || r.attachedTo)
             );
-            if (sameNameAssigned.length <= 1) {
-                Object.assign(responsible, { area: null, subarea: null, attachedTo: null, placed: false, x: null, y: null });
+            if (sameNameAssigned.length === 0) {
+                this.showToast('Este responsable no está asignado a ninguna caja', 'info');
+                return;
+            }
+            if (sameNameAssigned.length === 1) {
+                const toUnassign = sameNameAssigned[0];
+                Object.assign(toUnassign, { area: null, subarea: null, attachedTo: null, placed: false, x: null, y: null });
                 this.save();
                 this.render();
                 this.showToast('Responsable desasignado', 'success');
@@ -3751,8 +3789,9 @@
                 const s = r.scope || 'corporativo';
                 return s === 'corporativo' ? 'Corp.' : s === 'negocio' ? `Neg.${r.business ? ' ' + r.business : ''}` : 'SGS';
             };
+            const preselectId = this.isResponsibleAssigned(responsible) ? responsibleId : sameNameAssigned[0].id;
             const options = sameNameAssigned.map(r =>
-                `<option value="${r.id}" ${r.id === responsibleId ? 'selected' : ''}>${this.escapeHtml(getBoxName(r))} — ${getScopeLabel(r)}</option>`
+                `<option value="${r.id}" ${r.id === preselectId ? 'selected' : ''}>${this.escapeHtml(getBoxName(r))} — ${getScopeLabel(r)}</option>`
             ).join('');
             const modal = document.createElement('div');
             modal.className = 'modal active';
